@@ -1,0 +1,3 @@
+faktory: /usr/local/bin/faktory
+worker: /usr/local/bin/perl -w faktory_worker.pl
+client: /usr/local/bin/perl -w faktory_client.pl

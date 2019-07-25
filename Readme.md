@@ -2,7 +2,7 @@
 
 Faktory job queue library for perl. 
 
-Most of the code is forked from the [faktory_worker_php5](https://github.com/jcs224/faktory_worker_php5) client
+Most of the code is based on the [faktory_worker_php5](https://github.com/jcs224/faktory_worker_php5) client
 
 
 ## Usage

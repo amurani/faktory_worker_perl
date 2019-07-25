@@ -4,8 +4,7 @@ use strict;
 use warnings;
 use feature qw(say);
 
-use local::lib;
-
+use lib '../';
 use FaktoryWorkerPerl::Client;
 use FaktoryWorkerPerl::Worker;
 use Data::Dump qw< pp >;

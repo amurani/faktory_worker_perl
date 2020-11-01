@@ -6,3 +6,5 @@ requires 'IO::Socket::INET';
 requires 'JSON';
 requires 'Data::GUID';
 requires 'Cwd';
+requires 'Test::Simple';
+requires 'Test::Deep';

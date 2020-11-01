@@ -5,7 +5,8 @@ use warnings;
 
 use feature qw(say);
 
-use lib '../';
+use FindBin;
+use lib "$FindBin::Bin/../lib";
 
 use FaktoryWorkerPerl::Client;
 use FaktoryWorkerPerl::Worker;
@@ -14,8 +15,9 @@ use Data::Dump qw< pp >;
 say "starting worker";
 
 my $worker = FaktoryWorkerPerl::Worker->new(
-    client => FaktoryWorkerPerl::Client->new,
-    queues => [qw< critical default bulk >]
+    client  => FaktoryWorkerPerl::Client->new,
+    queues  => [qw< critical default bulk >],
+    logging => 1,
 );
 
 $worker->register(

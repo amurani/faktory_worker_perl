@@ -4,7 +4,9 @@ use strict;
 use warnings;
 use feature qw(say);
 
-use lib '../';
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+
 use FaktoryWorkerPerl::Client;
 use FaktoryWorkerPerl::Job;
 use Time::HiRes qw< usleep >;
@@ -13,8 +15,9 @@ use Data::Dump qw< pp >;
 my $client = FaktoryWorkerPerl::Client->new;
 do {
     my $job = FaktoryWorkerPerl::Job->new(
-        type => 'poc_job',
-        args => [ int( rand(10) ), int( rand(10) ) ],
+        type    => 'poc_job',
+        args    => [ int( rand(10) ), int( rand(10) ) ],
+        logging => 1,
     );
     $client->push($job);
     say sprintf( "pushing new job: %s", $job->jid );

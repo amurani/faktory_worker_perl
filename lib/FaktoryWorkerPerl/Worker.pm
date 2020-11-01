@@ -41,9 +41,22 @@ has logging => (
 
 use constant SLEEP_INTERVAL => 250_000;
 
+=item register()
+
+Registers a job processor for each job type
+
+=cut
+
 sub register ( $self, $job_type, $callable ) {
     $self->job_types->{$job_type} = $callable;
 }
+
+=item run()
+
+Processes jobs in the fakory job server
+Can be daemonized or run once
+
+=cut
 
 sub run ( $self, $daemonize = 0 ) {
 
@@ -52,21 +65,23 @@ sub run ( $self, $daemonize = 0 ) {
 
         my $job = $self->client->fetch( $self->queues );
         if ( $job && keys %$job ) {
-            my $callable = $self->job_types->{ $job->{jobtype} };
-
             eval {
+                my $callable = $self->job_types->{ $job->{jobtype} }
+                    or die sprintf( "A worker for job type: %s has not been registered", $job->{jobtype} );
                 $callable->($job);
                 $self->client->ack( $job->{jid} );
             } or do {
                 my $error = $@;
                 say sprintf( "An error occured: %s for job: %s", $error, pp $job);
-                $self->client->fail( $job->{jid} );
+                $self->client->fail( $job->{jid}, $error );
             };
         } else {
             say "no jobs to run atm" if $self->logging;
         }
 
         usleep( $self->SLEEP_INTERVAL );
+        say "worker is running as a daemon" if $daemonize;
+        say "worker has not been asked to stop" if !$self->stop;
     } while ( $daemonize && !$self->stop );
 }
 

@@ -31,9 +31,26 @@ has json_serialized => (
     lazy    => 1,
 );
 
+=begin
+TODO: factor in the job metadata https://github.com/contribsys/faktory/wiki/The-Job-Payload#metadata
+TODO: factor in the job options for faktopry worker https://github.com/contribsys/faktory/wiki/The-Job-Payload#options
+=cut
+
+=item _build_jid ()
+
+Generate a unique job id
+
+=cut
+
 sub _build_jid($self) {
     return Data::GUID->new->as_string;
 }
+
+=item _build_json_serialization ()
+
+Generate a json serialization for the job
+
+=cut
 
 sub _build_json_serialization($self) {
     return {

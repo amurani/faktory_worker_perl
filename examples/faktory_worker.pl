@@ -5,8 +5,7 @@ use warnings;
 
 use feature qw(say);
 
-# use lib '../';
-push @INC, '../';
+use lib '../';
 
 use FaktoryWorkerPerl::Client;
 use FaktoryWorkerPerl::Worker;

@@ -29,7 +29,13 @@ has job_types => (
 has stop => (
     is      => 'rw',
     isa     => 'Bool',
-    default => 0,
+    default => sub { 0 },
+);
+
+has is_running => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => sub { 0 },
 );
 
 has logging => (
@@ -59,29 +65,43 @@ Can be daemonized or run once
 =cut
 
 sub run ( $self, $daemonize = 0 ) {
-
     do {
-        $self->client->beat();
+        unless ( $self->is_running ) {
+            $self->is_running(1);
+            say "worker is running as a daemon" if $self->logging && $daemonize;
+        }
+        $self->is_running(0) if $self->stop;
+
+        my $heartbeat = $self->client->beat();
+        last if ( $heartbeat eq 'terminate' );
+        next if ( $heartbeat eq 'quiet' );
 
         my $job = $self->client->fetch( $self->queues );
         if ( $job && keys %$job ) {
             eval {
                 my $callable = $self->job_types->{ $job->{jobtype} }
-                    or die sprintf( "A worker for job type: %s has not been registered", $job->{jobtype} );
+                    or die sprintf( "No worker for job type: %s has been registered", $job->{jobtype} );
+
                 $callable->($job);
                 $self->client->ack( $job->{jid} );
             } or do {
                 my $error = $@;
-                say sprintf( "An error occured: %s for job: %s", $error, pp $job);
-                $self->client->fail( $job->{jid}, $error );
+                say sprintf( "An error occured: %s for job: %s", $error, pp $job) if $self->logging;
+
+                my @backtrace = ();
+                my $i         = 1;
+                while ( ( my @caller_details = ( caller( $i++ ) ) ) ) {
+                    my ( $package, $filename, $line, $subroutine ) = @caller_details;
+                    push @backtrace, sprintf( "%s:%s in %s at %s", $package, $subroutine, $filename, $line );
+                }
+                $self->client->fail( $job->{jid}, "Exception", $error, [ reverse @backtrace ] );
             };
         } else {
             say "no jobs to run atm" if $self->logging;
         }
 
+        say "worker has not been asked to stop" if $self->logging && !$self->stop;
         usleep( $self->SLEEP_INTERVAL );
-        say "worker is running as a daemon" if $daemonize;
-        say "worker has not been asked to stop" if !$self->stop;
     } while ( $daemonize && !$self->stop );
 }
 

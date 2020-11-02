@@ -5,6 +5,8 @@ no warnings qw(experimental::signatures);
 use IO::Socket::INET;
 use JSON;
 use Data::GUID;
+use Sys::Hostname;
+use Linux::Pid qw< getpid >;
 use Data::Dump qw< pp >;
 
 use constant HOST             => 'localhost';
@@ -88,7 +90,8 @@ Returns the job id once pushed
 
 sub push ( $self, $job ) {
     my $client_socket = $self->connect();
-    my $response      = $self->send( $client_socket, $self->PUSH, encode_json( $job->json_serialized ) );
+    my $job_payload   = $job->json_serialized;
+    my $response      = $self->send( $client_socket, $self->PUSH, encode_json($job_payload) );
     say sprintf( "send push: %s", $response ) if $self->logging;
     $self->disconnect($client_socket);
     return $job->jid;
@@ -101,7 +104,8 @@ Sends an acknowledgement that a job has been processed successfully
 
 sub ack ( $self, $job_id ) {
     my $client_socket = $self->connect();
-    my $response      = $self->send( $client_socket, $self->ACK, encode_json( { jid => $job_id } ) );
+    my $ack_payload   = { jid => $job_id };
+    my $response      = $self->send( $client_socket, $self->ACK, encode_json($ack_payload) );
     say sprintf( "send ack: %s", $response ) if $self->logging;
     $self->disconnect($client_socket);
     return $response eq $self->OK;
@@ -112,10 +116,10 @@ sub ack ( $self, $job_id ) {
 Sends failure information that a job has  not been processed successfully
 =cut
 
-sub fail ( $self, $job_id, $error_message ) {
+sub fail ( $self, $job_id, $error_type, $error_message, $backtrace ) {
     my $client_socket = $self->connect();
-    my $response =
-        $self->send( $client_socket, $self->FAIL, encode_json( { jid => $job_id, message => $error_message } ) );
+    my $fail_payload  = { jid => $job_id, errtype => $error_type, message => $error_message, backtrace => $backtrace };
+    my $response      = $self->send( $client_socket, $self->FAIL, encode_json($fail_payload) );
     say sprintf( "send fail: %s", $response ) if $self->logging;
     $self->disconnect($client_socket);
     return $response eq $self->OK;
@@ -129,10 +133,16 @@ Sends a BEAT as required for proof of liveness
 
 sub beat($self) {
     my $client_socket = $self->connect();
-    my $response = $self->send( $client_socket, $self->BEAT, encode_json( { wid => "" . $self->protocol_version } ) );
-    say sprintf( "send beat: %s", $response ) if $self->logging;
+    my $beat_payload  = { wid => $self->wid };
+    my $response      = $self->send( $client_socket, $self->BEAT, encode_json($beat_payload) );
+    say sprintf( "send beat response: %s", $response ) if $self->logging;
     $self->disconnect($client_socket);
-    return $response eq $self->OK;
+
+    if ( $response =~ m/^{.*$/ ) {
+        return decode_json($response)->{state};
+    } else {
+        return $response eq $self->OK;
+    }
 }
 
 =item connect()
@@ -150,12 +160,19 @@ sub connect($self) {
 
     eval {
         my $data = $self->recv($client_socket);
-        my $expected_handshake_reponse =
-            sprintf( "%s %s\r\n", $self->HI, encode_json( { v => $self->protocol_version } ) );
+
+        my $handshake_payload          = { v => $self->protocol_version };
+        my $expected_handshake_reponse = sprintf( "%s %s\r\n", $self->HI, encode_json($handshake_payload) );
         die "Handshake: HI not received :( $data"
             unless ( $data eq $expected_handshake_reponse );
-
-        my $response = $self->send( $client_socket, $self->HELLO, encode_json( { v => $self->protocol_version } ) );
+        my $hello_payload = {
+            v        => $self->protocol_version,
+            wid      => $self->wid,
+            hostname => hostname,
+            pid      => getpid,
+            labels   => [qw< perl >],
+        };
+        my $response = $self->send( $client_socket, $self->HELLO, encode_json($hello_payload) );
         die sprintf( "Handshake: HI did not get sent :( %s", $response || '!! NO RESPNSE RECIEVED!!' )
             unless ( $response eq $self->OK );
     } or do {

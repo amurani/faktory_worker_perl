@@ -1,7 +1,6 @@
-use strict;
-use warnings;
 use feature qw(say);
 
+use Test::Spec;
 use Test::More;
 
 use Time::HiRes qw< usleep >;
@@ -9,83 +8,98 @@ use Time::HiRes qw< usleep >;
 use FindBin;
 use lib "$FindBin::Bin/../lib";
 
-require_ok('FaktoryWorkerPerl::Worker');
-require_ok('FaktoryWorkerPerl::Client');
-require_ok('FaktoryWorkerPerl::Job');
+describe 'FaktoryWorkerPerl::Job' => sub {
 
-my $client = FaktoryWorkerPerl::Client->new( logging => 0 );
-my $worker = FaktoryWorkerPerl::Worker->new(
-    client => $client,
-    queues => [qw< critical default bulk >],
-);
+    it "package(s) required ok" => sub {
+        require_ok('FaktoryWorkerPerl::Worker');
+        require_ok('FaktoryWorkerPerl::Client');
+        require_ok('FaktoryWorkerPerl::Job');
+    };
 
-my $is_do_addition_job_called = 0;
-$worker->register(
-    my $do_addition_job = 'do_addition_job',
-    sub {
-        return if $is_do_addition_job_called;
-        say "worker is running addition job";
-        my $job = shift;
+    my ( $client,          $worker );
+    my ( $do_addition_job, $do_substraction_job );
 
-        my $args = $job->{args};
-        my ( $a, $b ) = @$args;
-        my $sum = $a + $b;
+    my $is_do_addition_job_called     = 0;
+    my $is_do_substraction_job_called = 0;
 
-        say sprintf( "sum: %d + %d = %d", $a, $b, $sum );
-        $is_do_addition_job_called = 1;
-    }
-);
+    it "creates job server worker okay" => sub {
+        $client = FaktoryWorkerPerl::Client->new( logging => 0 );
+        $worker = FaktoryWorkerPerl::Worker->new(
+            client => $client,
+            queues => [qw< critical default bulk >],
+        );
 
-my $is_do_substraction_job_called = 0;
-$worker->register(
-    my $do_substraction_job = 'do_substraction_job',
-    sub {
-        return if $is_do_substraction_job_called;
-        say "worker is running substraction job";
-        my $job = shift;
+        $worker->register(
+            $do_addition_job = 'do_addition_job',
+            sub {
+                return if $is_do_addition_job_called;
+                say "worker is running addition job";
+                my $job = shift;
 
-        my $args = $job->{args};
-        my ( $a, $b ) = @$args;
-        my $sum = $a - $b;
+                my $args = $job->{args};
+                my ( $a, $b ) = @$args;
+                my $sum = $a + $b;
 
-        say sprintf( "difference: %d - %d = %d", $a, $b, $sum );
-        $is_do_substraction_job_called = 1;
-    }
-);
+                say sprintf( "sum: %d + %d = %d", $a, $b, $sum );
+                $is_do_addition_job_called = 1;
+            }
+        );
 
-ok( $worker, "worker is created okay" );
+        $worker->register(
+            $do_substraction_job = 'do_substraction_job',
+            sub {
+                return if $is_do_substraction_job_called;
+                say "worker is running substraction job";
+                my $job = shift;
 
-ok( $worker->client, "worker client is created okay" );
+                my $args = $job->{args};
+                my ( $a, $b ) = @$args;
+                my $sum = $a - $b;
 
-is( scalar @{ $worker->queues }, 3, "worker has 3 queues" );
+                say sprintf( "difference: %d - %d = %d", $a, $b, $sum );
+                $is_do_substraction_job_called = 1;
+            }
+        );
 
-is( scalar keys %{ $worker->job_types }, 2, "worker has 2 job types" );
+        ok( $worker, "worker is created okay" );
 
-$worker->run();
+        ok( $worker->client, "worker client is created okay" );
 
-my $addition_job = FaktoryWorkerPerl::Job->new(
-    type => $do_addition_job,
-    args => [ int( rand(10) ), int( rand(10) ) ],
-);
-$client->push($addition_job);
+        is( scalar @{ $worker->queues }, 3, "worker has 3 queues" );
 
-my $substraction_job = FaktoryWorkerPerl::Job->new(
-    type => $do_substraction_job,
-    args => [ int( rand(10) ), int( rand(10) ) ],
-);
-$client->push($substraction_job);
+        is( scalar keys %{ $worker->job_types }, 2, "worker has 2 job types" );
+    };
 
-do {
-    ok( $is_do_addition_job_called,     "worker calls addition job okay" )     if $is_do_addition_job_called;
-    ok( $is_do_substraction_job_called, "worker calls substraction job okay" ) if $is_do_substraction_job_called;
+    it "processes job server jobs okay" => sub {
+        $worker->run();
 
-    if ( $is_do_addition_job_called && $is_do_substraction_job_called ) {
-        $worker->stop(1);
-    } else {
-        say "worker is still waiting for addition job"     unless $is_do_addition_job_called;
-        say "worker is still waiting for substraction job" unless $is_do_substraction_job_called;
-        usleep(1_000_000);
-    }
-} while ( !( $is_do_addition_job_called && $is_do_substraction_job_called ) );
+        my $addition_job = FaktoryWorkerPerl::Job->new(
+            type => $do_addition_job,
+            args => [ int( rand(10) ), int( rand(10) ) ],
+        );
+        $client->push($addition_job);
 
-done_testing();
+        my $substraction_job = FaktoryWorkerPerl::Job->new(
+            type => $do_substraction_job,
+            args => [ int( rand(10) ), int( rand(10) ) ],
+        );
+        $client->push($substraction_job);
+
+        do {
+            ok( $is_do_addition_job_called,     "worker calls addition job okay" ) if $is_do_addition_job_called;
+            ok( $is_do_substraction_job_called, "worker calls substraction job okay" )
+                if $is_do_substraction_job_called;
+
+            if ( $is_do_addition_job_called && $is_do_substraction_job_called ) {
+                $worker->stop(1);
+            } else {
+                say "worker is still waiting for addition job"     unless $is_do_addition_job_called;
+                say "worker is still waiting for substraction job" unless $is_do_substraction_job_called;
+                usleep(1_000_000);
+            }
+        } while ( !( $is_do_addition_job_called && $is_do_substraction_job_called ) );
+    };
+
+};
+
+runtests unless caller;

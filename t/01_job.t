@@ -1,22 +1,29 @@
-use strict;
-use warnings;
-
+use Test::Spec;
 use Test::More;
 
 use FindBin;
 use lib "$FindBin::Bin/../lib";
 
-require_ok('FaktoryWorkerPerl::Job');
+describe 'FaktoryWorkerPerl::Job' => sub {
 
-my $job = FaktoryWorkerPerl::Job->new(
-    type => 'poc_job',
-    args => [ int( rand(10) ), int( rand(10) ) ],
-);
+    it "package(s) required ok" => sub {
+        require_ok('FaktoryWorkerPerl::Job');
+    };
 
-ok( $job, "job is created okay" );
+    it "creates job server job okay", sub {
 
-is( $job->type, 'poc_job', "job type is named okay" );
+        my $job = FaktoryWorkerPerl::Job->new(
+            type => 'poc_job',
+            args => [ int( rand(10) ), int( rand(10) ) ],
+        );
 
-is( scalar @{ $job->args }, 2, "job has 2 arguments" );
+        ok( $job, "job is created okay" );
 
-done_testing();
+        is( $job->type, 'poc_job', "job type is named okay" );
+
+        is( scalar @{ $job->args }, 2, "job has 2 arguments" );
+    };
+
+};
+
+runtests unless caller;

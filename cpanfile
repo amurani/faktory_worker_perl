@@ -8,3 +8,4 @@ requires 'Data::GUID';
 requires 'Cwd';
 requires 'Test::Simple';
 requires 'Test::Deep';
+requires 'Test::Spec';

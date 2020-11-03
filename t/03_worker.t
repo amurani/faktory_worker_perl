@@ -62,11 +62,23 @@ describe 'FaktoryWorkerPerl::Worker' => sub {
 
         my ( $poc_job_processor, $do_addition_job_processor, $do_substraction_job_processor ) = @job_processors;
 
-        $worker->register( $do_poc_job = 'do_poc_job', sub { $poc_job_processor->(@_) } );
+        is( $worker->register( $do_poc_job = 'do_poc_job', sub { $poc_job_processor->(@_) } ),
+            1, 'do_poc_job registered okay' );
 
-        $worker->register( $do_addition_job = 'do_addition_job', sub { $do_addition_job_processor->(@_) } );
+        is( $worker->register( $do_addition_job = 'do_addition_job', sub { $do_addition_job_processor->(@_) } ),
+            1, 'do_addition_job registered ok' );
 
-        $worker->register( $do_substraction_job = 'do_substraction_job', sub { $do_substraction_job_processor->(@_) } );
+        is(
+            $worker->register(
+                $do_substraction_job = 'do_substraction_job',
+                sub { $do_substraction_job_processor->(@_) }
+            ),
+            1,
+            'do_substraction_job registered okay'
+        );
+
+        is( $worker->register( undef,      sub { } ), 0, 'fails to register job worker without name okay' );
+        is( $worker->register( 'fake_job', undef ),   0, 'fails to register job worker with no processor okay ' );
     };
 
     it "creates job server worker okay" => sub {
@@ -85,65 +97,62 @@ describe 'FaktoryWorkerPerl::Worker' => sub {
     };
 
     it "processes job server client jobs okay" => sub {
-        my $job_to_ack = FaktoryWorkerPerl::Job->new(
-            type => $do_poc_job,
-            args => [ int( rand(10) ), int( rand(10) ) ],
-        );
-        is( $client->push($job_to_ack), $job_to_ack->jid, "client pushes job to ack and returns job id okay" );
-
-        my $job_to_fail = FaktoryWorkerPerl::Job->new(
-            type => $do_poc_job,
-            args => [ int( rand(10) ), int( rand(10) ) ],
-        );
-        is( $client->push($job_to_fail), $job_to_fail->jid, "client pushes job to fail and returns job id okay" );
-
         my $poc_job = FaktoryWorkerPerl::Job->new(
             type => $do_poc_job,
             args => [ int( rand(10) ), int( rand(10) ) ],
         );
-        is( $client->push($poc_job), $poc_job->jid, "client pushes job and returns job id" );
+        is( $client->push($poc_job), $poc_job->jid, "client pushes do_poc_job job and returns job id okay" );
 
         my $addition_job = FaktoryWorkerPerl::Job->new(
             type => $do_addition_job,
             args => [ int( rand(10) ), int( rand(10) ) ],
         );
-        $client->push($addition_job);
+        is( $client->push($addition_job),
+            $addition_job->jid, "client pushes do_addition_job job and returns job id okay" );
 
         my $substraction_job = FaktoryWorkerPerl::Job->new(
             type => $do_substraction_job,
             args => [ int( rand(10) ), int( rand(10) ) ],
         );
-        $client->push($substraction_job);
+        is( $client->push($substraction_job),
+            $substraction_job->jid, "client pushes do_substraction_job job and returns job id okay" );
 
         my $job_json = $client->fetch( [qw< critical bulk >] );
         cmp_deeply( $job_json, {}, "client fetches no jobs for queues with no jobs" );
 
+        my $are_all_jobs_processed = 0;
         do {
-            # this blocks the code after it TODO: @amurani pls fix
-            $worker->run( my $daemonize = 1 ) unless $worker->is_running;
-
-            if ( $is_do_poc_job_called && $is_do_addition_job_called && $is_do_substraction_job_called ) {
+            if ($are_all_jobs_processed) {
                 ok( $is_do_poc_job_called,          "worker calls poc job okay" );
                 ok( $is_do_addition_job_called,     "worker calls addition job okay" );
                 ok( $is_do_substraction_job_called, "worker calls substraction job okay" );
 
-                $worker->stop(1);
+                last;
             } else {
                 say "worker is still waiting for poc job"          unless $is_do_poc_job_called;
                 say "worker is still waiting for addition job"     unless $is_do_addition_job_called;
                 say "worker is still waiting for substraction job" unless $is_do_substraction_job_called;
 
+                $worker->run();
+
                 my $job_json = $client->fetch();
                 my $job_to_compare;
+
+=begin
                 if ( $job_json->{jid} eq $job_to_ack->jid ) {
                     ok( $client->ack( $job_to_ack->jid ), "client acks job to ack okay" );
                 } elsif ( $job_json->{jid} eq $job_to_fail->jid ) {
                     ok( $client->fail( $job_to_fail->jid, "Rejecting job for test" ),
                         "client sends failures for job to fail okay" );
-                } elsif ( $job_json->{jid} eq $addition_job->jid ) {
+                }
+=cut
+
+                if ( $job_json->{jid} && $job_json->{jid} eq $addition_job->jid ) {
                     $job_to_compare = $addition_job;
-                } elsif ( $job_json->{jid} eq $substraction_job->jid ) {
+                } elsif ( $job_json->{jid} && $job_json->{jid} eq $substraction_job->jid ) {
                     $job_to_compare = $substraction_job;
+                } elsif ( $job_json->{jid} && $job_json->{jid} eq $poc_job->jid ) {
+                    $job_to_compare = $poc_job;
                 }
 
                 if ($job_to_compare) {
@@ -158,16 +167,35 @@ describe 'FaktoryWorkerPerl::Worker' => sub {
                             queue       => ignore(),
                             retry       => ignore(),
                         },
-                        "client serializes job to json okay"
+                        sprintf( "client serializes %s job to json okay", $job_to_compare->type )
                     );
-                    ok( $client->ack( $job_to_compare->jid ), "client acks job to compare okay" );
                 }
 
                 usleep(1_000_000);
             }
-        } while ( !( $is_do_addition_job_called && $is_do_substraction_job_called ) );
+
+            $are_all_jobs_processed =
+                $is_do_poc_job_called && $is_do_addition_job_called && $is_do_substraction_job_called;
+        } while ( !$are_all_jobs_processed );
 
     };
+
+=begin
+    it "processes job server client ack/fail jobs okay" => sub {
+
+        my $job_to_ack = FaktoryWorkerPerl::Job->new(
+            type => $do_poc_job,
+            args => [ int( rand(10) ), int( rand(10) ) ],
+        );
+        is( $client->push($job_to_ack), $job_to_ack->jid, "client pushes job to ack and returns job id okay" );
+
+        my $job_to_fail = FaktoryWorkerPerl::Job->new(
+            type => $do_poc_job,
+            args => [ int( rand(10) ), int( rand(10) ) ],
+        );
+        is( $client->push($job_to_fail), $job_to_fail->jid, "client pushes job to fail and returns job id okay" );
+    };
+=cut
 
 };
 

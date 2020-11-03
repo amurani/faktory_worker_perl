@@ -54,7 +54,19 @@ Registers a job processor for each job type
 =cut
 
 sub register ( $self, $job_type, $callable ) {
+    unless ($job_type) {
+        warn "An job processor cannot be registered without a job type" unless $job_type;
+        return 0;
+    }
+
+    unless ($callable) {
+        warn "A job processor cannot be undefined" unless $callable;
+        warn "A job processor must be a runnable subroutine" unless ref $callable eq 'CODE';
+        return 0;
+    }
+
     $self->job_types->{$job_type} = $callable;
+    return exists $self->job_types->{$job_type};
 }
 
 =item run()

@@ -1,4 +1,13 @@
 package FaktoryWorkerPerl::Worker;
+
+=pod
+
+=head1 FaktoryWorkerPerl::Worker
+
+Worker that handles fetching jobs from the Faktory job server and processes them
+
+=cut
+
 use Moose;
 use Moose::Util::TypeConstraints;
 use feature qw(signatures say);
@@ -42,9 +51,11 @@ has is_running => (
 
 use constant SLEEP_INTERVAL => 250_000;
 
+=over
+
 =item register()
 
-Registers a job processor for each job type
+Registers job processors for each job type
 
 =cut
 
@@ -66,8 +77,8 @@ sub register ( $self, $job_type, $callable ) {
 
 =item run()
 
-Processes jobs in the faktory job server
-Can be daemonized or run once
+Processes jobs in the faktory job server.
+It can be daemonized to run periodically or just run once
 
 =cut
 
@@ -116,3 +127,5 @@ sub run ( $self, $daemonize = 0 ) {
 __PACKAGE__->meta->make_immutable;
 
 1;
+
+=back

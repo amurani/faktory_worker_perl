@@ -1,4 +1,13 @@
 package FaktoryWorkerPerl::Client;
+
+=pod
+
+=head1 FaktoryWorkerPerl::Client
+
+Client that handles all communication with the Faktory job server and handles job interactions
+
+=cut
+
 use Moose;
 use feature qw(signatures);
 no warnings qw(experimental::signatures);
@@ -243,9 +252,3 @@ __PACKAGE__->meta->make_immutable;
 1;
 
 =back
-
-=pod
-
-=head1 FaktoryWorkerPerl::Client
-
-=cut

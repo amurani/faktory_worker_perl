@@ -1,4 +1,15 @@
 package FaktoryWorkerPerl::Job;
+
+=pod
+
+=head1 FaktoryWorkerPerl::Job
+
+A single unit of work to be pushed to the Faktory job server and processed by the worker
+
+TODO: factor in the job metadata https://github.com/contribsys/faktory/wiki/The-Job-Payload#metadata
+TODO: factor in the job options for faktopry worker https://github.com/contribsys/faktory/wiki/The-Job-Payload#options
+=cut
+
 use Moose;
 use feature qw(signatures);
 no warnings qw(experimental::signatures);
@@ -31,10 +42,7 @@ has json_serialized => (
     lazy    => 1,
 );
 
-=begin
-TODO: factor in the job metadata https://github.com/contribsys/faktory/wiki/The-Job-Payload#metadata
-TODO: factor in the job options for faktopry worker https://github.com/contribsys/faktory/wiki/The-Job-Payload#options
-=cut
+=over
 
 =item _build_jid ()
 
@@ -62,3 +70,5 @@ sub _build_json_serialization($self) {
 
 __PACKAGE__->meta->make_immutable;
 1;
+
+=back

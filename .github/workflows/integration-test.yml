@@ -29,6 +29,9 @@ jobs:
           cpanfile: "cpanfile"
           sudo: false
 
+      - name: Test docker-compose
+        run: docker-compose -v
+
       - name: Run tests for library
         run: make test
 

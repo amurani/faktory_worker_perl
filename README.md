@@ -62,7 +62,11 @@ $worker->run(my $daemonize = 1 );
 
 ## Tests
 
-The tests can be run via `make test`
+The tests can be run via
+
+```bash
+make test
+```
 
 ## Acknowledgement
 

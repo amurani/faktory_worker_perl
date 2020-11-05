@@ -1,14 +1,8 @@
 # Borrows references from https://github.com/marketplace/actions/install-with-cpanm
-name: CI
+name: integration-test
 
 # Run this action whenever one pushes to repository or creates a pull request
-on:
-  push:
-    branches:
-    - .
-  pull_request:
-      branches:
-        - master
+on: [push, pull_request]
 
 jobs:
   test:
@@ -26,9 +20,10 @@ jobs:
       image: perldocker/perl-tester:${{ matrix.perl-version }}
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v2
 
-      - name: Install perl dependencies
+      - name: Install perl dependencies via cpan
         uses: perl-actions/install-with-cpanm@v1.1
         with:
           cpanfile: "cpanfile"

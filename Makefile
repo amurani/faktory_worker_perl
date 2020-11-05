@@ -1,3 +1,7 @@
+# Install needed perl dependencies
+install_deps:
+	cpanm --installdeps --notest .
+
 # Run tests for Faktory Perl Library
 test:
 	echo "Starting FaktoryWorkerPerl tests"

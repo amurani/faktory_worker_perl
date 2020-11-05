@@ -198,12 +198,16 @@ describe 'FaktoryWorkerPerl::Worker' => sub {
                             $job->json_serialized,
                             {
                                 args        => $job_json->{args},
+                                at          => ignore(),
+                                backtrace   => 0,
                                 created_at  => ignore(),
+                                custom      => {},
                                 enqueued_at => ignore(),
+                                failure     => ignore(),
                                 jid         => $job_json->{jid},
                                 jobtype     => $job_json->{jobtype},
-                                queue       => ignore(),
-                                retry       => ignore(),
+                                queue       => 'default',
+                                retry       => 25,
                             },
                             sprintf( "client serializes %s job to json okay", $job_name )
                         );

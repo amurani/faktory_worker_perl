@@ -36,6 +36,9 @@ jobs:
           cpanfile: "cpanfile"
           sudo: false
 
+      - name: "Test to see if faktory server is running"
+        run: "curl --verbose --silent --output /dev/null http://localhost:${{ job.services.faktory.ports['7420'] }}"
+
       - name: Run tests for library
         run: make tests
 

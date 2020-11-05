@@ -164,65 +164,57 @@ describe 'FaktoryWorkerPerl::Worker' => sub {
         );
         is( $client->push($job_to_fail), $job_to_fail->jid, "client pushes job to fail and returns job id okay" );
 
-        my $job_json = $client->fetch( [qw< critical bulk >] );
-        cmp_deeply( $job_json, {}, "client fetches no jobs for queues with no jobs" );
+        cmp_deeply( $client->fetch( [qw< critical bulk >] ), {}, "client fetches no jobs for queues with no jobs" );
 
         my $are_all_jobs_processed = 0;
+        my ( $is_job_to_ack_processed, $is_job_to_fail_processed );
         do {
             if ($are_all_jobs_processed) {
-                ok( $is_do_poc_job_called,          "worker calls poc job okay" );
-                ok( $is_do_addition_job_called,     "worker calls addition job okay" );
-                ok( $is_do_substraction_job_called, "worker calls substraction job okay" );
+                ok( $are_all_jobs_processed, "jobs acked/failed okay" );
 
                 last;
             } else {
-                say "worker is still waiting for poc job"          unless $is_do_poc_job_called;
-                say "worker is still waiting for addition job"     unless $is_do_addition_job_called;
-                say "worker is still waiting for substraction job" unless $is_do_substraction_job_called;
+                say "worker is still waiting ack/fail jobs";
 
-                $worker->run();
+                my $job_json = $client->fetch();    # get jobs from default queue
+                if ($job_json) {
+                    my $job_to_compare;
+                    my $job_name;
 
-=begin
-                my $job_json = $client->fetch();
-                my $job_to_compare;
+                    if ( $job_json->{jid} eq $job_to_ack->jid ) {
+                        ok( $client->ack( $job_to_ack->jid ), "client acks job to ack okay" );
+                        $job_to_compare = $job_to_ack;
+                        $job_name       = 'job_to_ack';
+                    } elsif ( $job_json->{jid} eq $job_to_fail->jid ) {
+                        ok( $client->fail( $job_to_fail->jid, "Test Exception", "Rejecting job for test", [] ),
+                            "client sends failures for job to fail okay" );
+                        $job_to_compare = $job_to_fail;
+                        $job_name       = 'job_to_fail';
+                    }
 
-                if ( $job_json->{jid} eq $job_to_ack->jid ) {
-                    ok( $client->ack( $job_to_ack->jid ), "client acks job to ack okay" );
-                } elsif ( $job_json->{jid} eq $job_to_fail->jid ) {
-                    ok( $client->fail( $job_to_fail->jid, "Rejecting job for test" ),
-                        "client sends failures for job to fail okay" );
+                    if ($job_to_compare) {
+                        cmp_deeply(
+                            $job_json,
+                            {
+                                args        => $job_to_compare->json_serialized->{args},
+                                jid         => $job_to_compare->json_serialized->{jid},
+                                jobtype     => $job_to_compare->json_serialized->{jobtype},
+                                created_at  => ignore(),
+                                enqueued_at => ignore(),
+                                queue       => ignore(),
+                                retry       => ignore(),
+                            },
+                            sprintf( "client serializes %s job to json okay", $job_name )
+                        );
+                        $is_job_to_ack_processed  = 1 if $job_name eq 'job_to_ack';
+                        $is_job_to_fail_processed = 1 if $job_name eq 'job_to_fail';
+                    }
                 }
-
-                if ( $job_json->{jid} && $job_json->{jid} eq $addition_job->jid ) {
-                    $job_to_compare = $addition_job;
-                } elsif ( $job_json->{jid} && $job_json->{jid} eq $substraction_job->jid ) {
-                    $job_to_compare = $substraction_job;
-                } elsif ( $job_json->{jid} && $job_json->{jid} eq $poc_job->jid ) {
-                    $job_to_compare = $poc_job;
-                }
-
-                if ($job_to_compare) {
-                    cmp_deeply(
-                        $job_json,
-                        {
-                            args        => $job_to_compare->args,
-                            jid         => $job_to_compare->jid,
-                            jobtype     => $job_to_compare->type,
-                            created_at  => ignore(),
-                            enqueued_at => ignore(),
-                            queue       => ignore(),
-                            retry       => ignore(),
-                        },
-                        sprintf( "client serializes %s job to json okay", $job_to_compare->type )
-                    );
-                }
-=cut
 
                 usleep(1_000_000);
             }
 
-            $are_all_jobs_processed =
-                $is_do_poc_job_called && $is_do_addition_job_called && $is_do_substraction_job_called;
+            $are_all_jobs_processed = $is_job_to_ack_processed && $is_job_to_fail_processed;
         } while ( !$are_all_jobs_processed );
     };
 

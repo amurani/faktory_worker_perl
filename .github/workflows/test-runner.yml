@@ -1,0 +1,25 @@
+name: CI
+
+# Run this action whenever one pushes to repository or creates a pull request
+on:
+  push:
+    branches:
+    - .
+  pull_request:
+      branches:
+        - master
+
+jobs:
+  test:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install perl dependencies
+        run: make install_deps
+
+      - name: Run tests for library
+        run: make test
+

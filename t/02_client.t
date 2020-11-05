@@ -24,9 +24,9 @@ describe 'FaktoryWorkerPerl::Client' => sub {
     };
 
     it "job server client operations works okay" => sub {
-        my $connection = $client->connect();
-        ok( $connection,                      "client connects to job server okay" );
-        ok( $client->disconnect($connection), "client disconnects from job server okay" );
+        my $connection;
+        ok( $connection = $client->_connect(), "client connects to job server okay" );
+        ok( $client->_disconnect($connection), "client disconnects from job server okay" );
 
         ok( $client->beat(), "client sends beat okay" );
     };

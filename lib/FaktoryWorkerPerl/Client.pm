@@ -53,15 +53,17 @@ use constant HI      => "+HI";
 use constant OK      => "+OK\r\n";
 use constant NO_JOBS => "\$-1\r\n";
 
+=over
+
 =item fetch()
 
-Fetch jobs from the faktory job server in a list of queues
+Sends a FETCH to request a job from the Faktory job server in a list of queues
 Defaults to 'default' if no list is provided
 
 =cut
 
 sub fetch ( $self, $queues = [qw<default>] ) {
-    my $client_socket = $self->connect();
+    my $client_socket = $self->_connect();
     my $response      = $self->send( $client_socket, $self->FETCH, join( " ", @$queues ) );
     $self->logger->info( sprintf( "%s: %s", $self->FETCH, pp $response ) );
 
@@ -73,51 +75,51 @@ sub fetch ( $self, $queues = [qw<default>] ) {
         $data = $self->recv($client_socket);
         $self->logger->info( sprintf( "recv fetch: %s", pp $data ) );
     }
-    $self->disconnect($client_socket);
+    $self->_disconnect($client_socket);
 
     return decode_json($data);
 }
 
 =item push()
 
-Push a job to the faktory worker
+Sends a PUSH of a job to the Faktory worker
 Returns the job id once pushed
 =cut
 
 sub push ( $self, $job ) {
-    my $client_socket = $self->connect();
+    my $client_socket = $self->_connect();
     my $job_payload   = $job->json_serialized;
     my $response      = $self->send( $client_socket, $self->PUSH, encode_json($job_payload) );
     $self->logger->info( sprintf( "$self->PUSH: %s", pp $response ) );
-    $self->disconnect($client_socket);
+    $self->_disconnect($client_socket);
     return $job->jid;
 }
 
 =item ack()
 
-Sends an acknowledgement that a job has been processed successfully
+Sends an ACK when a job has been processed successfully
 =cut
 
 sub ack ( $self, $job_id ) {
-    my $client_socket = $self->connect();
+    my $client_socket = $self->_connect();
     my $ack_payload   = { jid => $job_id };
     my $response      = $self->send( $client_socket, $self->ACK, encode_json($ack_payload) );
     $self->logger->info( sprintf( "$self->ACK: %s", pp $response ) );
-    $self->disconnect($client_socket);
+    $self->_disconnect($client_socket);
     return $response eq $self->OK;
 }
 
 =item fail()
 
-Sends failure information that a job has  not been processed successfully
+Sends a FAIL when a job has  not been processed successfully
 =cut
 
 sub fail ( $self, $job_id, $error_type, $error_message, $backtrace ) {
-    my $client_socket = $self->connect();
+    my $client_socket = $self->_connect();
     my $fail_payload  = { jid => $job_id, errtype => $error_type, message => $error_message, backtrace => $backtrace };
     my $response      = $self->send( $client_socket, $self->FAIL, encode_json($fail_payload) );
     $self->logger->info( sprintf( "$self->FAIL: %s", pp $response ) );
-    $self->disconnect($client_socket);
+    $self->_disconnect($client_socket);
     return $response eq $self->OK;
 }
 
@@ -128,11 +130,11 @@ Sends a BEAT as required for proof of liveness
 =cut
 
 sub beat($self) {
-    my $client_socket = $self->connect();
+    my $client_socket = $self->_connect();
     my $beat_payload  = { wid => $self->wid };
     my $response      = $self->send( $client_socket, $self->BEAT, encode_json($beat_payload) );
     $self->logger->info( sprintf( "$self->BEAT: %s", pp $response ) );
-    $self->disconnect($client_socket);
+    $self->_disconnect($client_socket);
 
     if ( $response =~ m/^{.*$/ ) {
         return decode_json($response)->{state};
@@ -141,13 +143,61 @@ sub beat($self) {
     }
 }
 
-=item connect()
+=item recv()
 
-Opens network connection to faktory job server
+Reads response from Faktory job server
 
 =cut
 
-sub connect($self) {
+sub recv ( $self, $client_socket ) {
+    my $data;
+
+    eval {
+        $data = <$client_socket>;
+        $self->logger->info( sprintf( "recv: %s", pp $data ) );
+
+        1;
+    } or do {
+        my $error = $@;
+        die "recv failed with : $error";
+    };
+
+    return $data;
+}
+
+=item send()
+
+Sends payload to Faktory job server
+
+=cut
+
+sub send ( $self, $client_socket, $command, $data ) {
+    my $response;
+
+    eval {
+        my $payload = sprintf( "%s %s\r\n", $command, $data );
+        $self->logger->info( sprintf( "send payload: %s", pp $payload ) );
+        print $client_socket $payload;
+        $response = $self->recv($client_socket);
+        $self->logger->info( sprintf( "send response: %s", pp $response ) );
+
+        1;
+    } or do {
+        my $error = $@;
+        die "send failed with : $error";
+    };
+
+    return $response;
+}
+
+=item _connect()
+
+Opens TCP network connection to Faktory job server.
+Returns instance of socket connection
+
+=cut
+
+sub _connect($self) {
     my $client_socket = IO::Socket::INET->new(
         PeerAddr => $self->host,
         PeerPort => $self->port,
@@ -173,68 +223,29 @@ sub connect($self) {
             unless ( $response eq $self->OK );
     } or do {
         my $error = $@;
-        die "Error connecting to faktory job server: $error";
+        die "Error connecting to Faktory job server: $error";
     };
 
     return $client_socket;
 }
 
-=item disconnect()
+=item _disconnect()
 
-Closes network connection to faktory job server
+Closes TCP network connection to Faktory job server
 
 =cut
 
-sub disconnect ( $self, $client_socket ) {
+sub _disconnect ( $self, $client_socket ) {
     return $client_socket->close();
-}
-
-=item recv()
-
-Reads response from faktory job server
-
-=cut
-
-sub recv ( $self, $client_socket ) {
-    my $data;
-
-    eval {
-        $data = <$client_socket>;
-        $self->logger->info( sprintf( "recv: %s", pp $data ) );
-
-        1;
-    } or do {
-        my $error = $@;
-        die "recv failed with : $error";
-    };
-
-    return $data;
-}
-
-=item send()
-
-Sends payload to faktory job server
-
-=cut
-
-sub send ( $self, $client_socket, $command, $data ) {
-    my $response;
-
-    eval {
-        my $payload = sprintf( "%s %s\r\n", $command, $data );
-        $self->logger->info( sprintf( "send payload: %s", pp $payload ) );
-        print $client_socket $payload;
-        $response = $self->recv($client_socket);
-        $self->logger->info( sprintf( "send response: %s", pp $response ) );
-
-        1;
-    } or do {
-        my $error = $@;
-        die "send failed with : $error";
-    };
-
-    return $response;
 }
 
 __PACKAGE__->meta->make_immutable;
 1;
+
+=back
+
+=pod
+
+=head1 FaktoryWorkerPerl::Client
+
+=cut

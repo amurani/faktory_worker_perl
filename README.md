@@ -60,12 +60,28 @@ $worker->run(my $daemonize = 1 );
 
 ```
 
-## Tests
+## Development
+
+### Setup
+
+All the required perl dependencies are in the cpanfile. You can get them via
+
+```bash
+make install_deps
+```
+
+To see server queues and jobs start the job server and access the [web UI](http://localhost:7420/) via
+
+```bash
+make run_job_server
+```
+
+### Tests
 
 The tests can be run via
 
 ```bash
-make test
+make tests
 ```
 
 ## Acknowledgement

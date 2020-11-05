@@ -10,6 +10,8 @@ run_job_server:
 tests:
 	echo "Starting FaktoryWorkerPerl tests"
 	docker-compose -f docker-compose.yml up -d
+	echo "Check that Faktory server is running"
+	curl --verbose --silent --output /dev/null http://localhost:7420/
 	prove -vr  t/
 	docker-compose down
 	echo "Finshed FaktoryWorkerPerl tests"

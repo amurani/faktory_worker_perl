@@ -1,0 +1,7 @@
+version: "3.8"
+services:
+  faktory:
+    image: contribsys/faktory:latest
+    ports:
+      - '127.0.0.1:7419:7419'
+      - '127.0.0.1:7420:7420'

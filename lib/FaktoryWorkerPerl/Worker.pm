@@ -6,6 +6,8 @@ no warnings qw(experimental::signatures);
 use Time::HiRes qw< usleep >;
 use Data::Dump qw< pp >;
 
+with 'FaktoryWorkerPerl::Roles::Logger';
+
 class_type Client => { class => 'FaktoryWorkerPerl::Client' };
 has client        => (
     is       => 'rw',
@@ -38,13 +40,6 @@ has is_running => (
     default => sub { 0 },
 );
 
-has logging => (
-    is       => 'rw',
-    isa      => 'Bool',
-    required => 0,
-    default  => sub { 0 },
-);
-
 use constant SLEEP_INTERVAL => 250_000;
 
 =item register()
@@ -71,7 +66,7 @@ sub register ( $self, $job_type, $callable ) {
 
 =item run()
 
-Processes jobs in the fakory job server
+Processes jobs in the faktory job server
 Can be daemonized or run once
 
 =cut
@@ -80,7 +75,7 @@ sub run ( $self, $daemonize = 0 ) {
     do {
         unless ( $self->is_running ) {
             $self->is_running(1);
-            say "worker is running as a daemon" if $self->logging && $daemonize;
+            $self->logger->info("worker is running as a daemon") if $daemonize;
         }
         $self->is_running(0) if $self->stop;
 
@@ -98,7 +93,7 @@ sub run ( $self, $daemonize = 0 ) {
                 $self->client->ack( $job->{jid} );
             } or do {
                 my $error = $@;
-                say sprintf( "An error occured: %s for job: %s", $error, pp $job) if $self->logging;
+                $self->logger->info( sprintf( "An error occured: %s for job: %s", $error, pp $job) );
 
                 my @backtrace = ();
                 my $i         = 1;
@@ -109,13 +104,15 @@ sub run ( $self, $daemonize = 0 ) {
                 $self->client->fail( $job->{jid}, "Exception", $error, [ reverse @backtrace ] );
             };
         } else {
-            say "no jobs to run atm" if $self->logging;
+            $self->logger->info("no jobs to run at present");
         }
 
-        say "worker has not been asked to stop" if $self->logging && !$self->stop;
+        $self->logger->info("worker has not been asked to stop") unless $self->stop;
+
         usleep( $self->SLEEP_INTERVAL );
     } while ( $daemonize && !$self->stop );
 }
 
 __PACKAGE__->meta->make_immutable;
+
 1;

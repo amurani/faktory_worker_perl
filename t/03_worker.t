@@ -55,7 +55,7 @@ describe 'FaktoryWorkerPerl::Worker' => sub {
     );
 
     before all => sub {
-        $client = FaktoryWorkerPerl::Client->new( logging => 0 );
+        $client = FaktoryWorkerPerl::Client->new;
         $worker = FaktoryWorkerPerl::Worker->new(
             client => $client,
             queues => [qw< critical default bulk >],

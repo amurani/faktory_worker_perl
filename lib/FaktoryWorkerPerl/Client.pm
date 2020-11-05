@@ -1,6 +1,6 @@
 package FaktoryWorkerPerl::Client;
 use Moose;
-use feature qw(signatures say);
+use feature qw(signatures);
 no warnings qw(experimental::signatures);
 use IO::Socket::INET;
 use JSON;
@@ -8,6 +8,8 @@ use Data::GUID;
 use Sys::Hostname;
 use Linux::Pid qw< getpid >;
 use Data::Dump qw< pp >;
+
+with 'FaktoryWorkerPerl::Roles::Logger';
 
 use constant HOST             => 'localhost';
 use constant PORT             => '7419';
@@ -40,13 +42,6 @@ has wid => (
     default => sub { Data::GUID->new->as_string },
 );
 
-has logging => (
-    is       => 'rw',
-    isa      => 'Bool',
-    required => 0,
-    default  => sub { 0 },
-);
-
 use constant HELLO => 'HELLO';
 use constant PUSH  => 'PUSH';
 use constant ACK   => 'ACK';
@@ -68,14 +63,15 @@ Defaults to 'default' if no list is provided
 sub fetch ( $self, $queues = [qw<default>] ) {
     my $client_socket = $self->connect();
     my $response      = $self->send( $client_socket, $self->FETCH, join( " ", @$queues ) );
-    say sprintf( "send fetch: %s", $response ) if $self->logging;
+    $self->logger->info( sprintf( "%s: %s", $self->FETCH, pp $response ) );
 
     my $data;
     if ( $response eq $self->NO_JOBS || $response eq $self->OK ) {
         $data = "{}";
+        $self->logger->info( sprintf("$self->FETCH returned no job") );
     } else {
         $data = $self->recv($client_socket);
-        say sprintf( "recv fetch: %s", $data ) if $self->logging;
+        $self->logger->info( sprintf( "recv fetch: %s", pp $data ) );
     }
     $self->disconnect($client_socket);
 
@@ -92,7 +88,7 @@ sub push ( $self, $job ) {
     my $client_socket = $self->connect();
     my $job_payload   = $job->json_serialized;
     my $response      = $self->send( $client_socket, $self->PUSH, encode_json($job_payload) );
-    say sprintf( "send push: %s", $response ) if $self->logging;
+    $self->logger->info( sprintf( "$self->PUSH: %s", pp $response ) );
     $self->disconnect($client_socket);
     return $job->jid;
 }
@@ -106,7 +102,7 @@ sub ack ( $self, $job_id ) {
     my $client_socket = $self->connect();
     my $ack_payload   = { jid => $job_id };
     my $response      = $self->send( $client_socket, $self->ACK, encode_json($ack_payload) );
-    say sprintf( "send ack: %s", $response ) if $self->logging;
+    $self->logger->info( sprintf( "$self->ACK: %s", pp $response ) );
     $self->disconnect($client_socket);
     return $response eq $self->OK;
 }
@@ -120,7 +116,7 @@ sub fail ( $self, $job_id, $error_type, $error_message, $backtrace ) {
     my $client_socket = $self->connect();
     my $fail_payload  = { jid => $job_id, errtype => $error_type, message => $error_message, backtrace => $backtrace };
     my $response      = $self->send( $client_socket, $self->FAIL, encode_json($fail_payload) );
-    say sprintf( "send fail: %s", $response ) if $self->logging;
+    $self->logger->info( sprintf( "$self->FAIL: %s", pp $response ) );
     $self->disconnect($client_socket);
     return $response eq $self->OK;
 }
@@ -135,7 +131,7 @@ sub beat($self) {
     my $client_socket = $self->connect();
     my $beat_payload  = { wid => $self->wid };
     my $response      = $self->send( $client_socket, $self->BEAT, encode_json($beat_payload) );
-    say sprintf( "send beat response: %s", $response ) if $self->logging;
+    $self->logger->info( sprintf( "$self->BEAT: %s", pp $response ) );
     $self->disconnect($client_socket);
 
     if ( $response =~ m/^{.*$/ ) {
@@ -177,7 +173,7 @@ sub connect($self) {
             unless ( $response eq $self->OK );
     } or do {
         my $error = $@;
-        die "We have issues man: $error";
+        die "Error connecting to faktory job server: $error";
     };
 
     return $client_socket;
@@ -204,7 +200,7 @@ sub recv ( $self, $client_socket ) {
 
     eval {
         $data = <$client_socket>;
-        say sprintf( "recv: %s", $data ) if $self->logging;
+        $self->logger->info( sprintf( "recv: %s", pp $data ) );
 
         1;
     } or do {
@@ -226,10 +222,10 @@ sub send ( $self, $client_socket, $command, $data ) {
 
     eval {
         my $payload = sprintf( "%s %s\r\n", $command, $data );
-        say sprintf( "send payload: %s", $payload ) if $self->logging;
+        $self->logger->info( sprintf( "send payload: %s", pp $payload ) );
         print $client_socket $payload;
         $response = $self->recv($client_socket);
-        say sprintf( "send response: %s", $response ) if $self->logging;
+        $self->logger->info( sprintf( "send response: %s", pp $response ) );
 
         1;
     } or do {

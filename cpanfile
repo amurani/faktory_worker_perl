@@ -10,3 +10,4 @@ requires 'Linux::Pid';
 requires 'Test::Simple';
 requires 'Test::Deep';
 requires 'Test::Spec';
+requries 'Test::Warn';

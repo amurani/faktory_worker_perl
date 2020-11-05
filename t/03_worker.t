@@ -2,6 +2,7 @@ use feature qw(say);
 
 use Test::Spec;
 use Test::More;
+use Test::Warn;
 
 use Time::HiRes qw< usleep >;
 use Data::Dump qw< pp >;
@@ -77,8 +78,16 @@ describe 'FaktoryWorkerPerl::Worker' => sub {
             'do_substraction_job registered okay'
         );
 
-        is( $worker->register( undef,      sub { } ), 0, 'fails to register job worker without name okay' );
-        is( $worker->register( 'fake_job', undef ),   0, 'fails to register job worker with no processor okay ' );
+        my ( $no_name_woker, $no_processor_worker );
+        warning_is {
+            $no_name_woker = $worker->register( undef, sub { } )
+        }
+        "An job processor cannot be registered without a job type";
+        warnings_are { $no_processor_worker = $worker->register( 'fake_job', undef ) }
+        [ "A job processor cannot be undefined", "A job processor must be a runnable subroutine" ];
+
+        is( $no_name_woker,       0, 'fails to register job worker without name okay' );
+        is( $no_processor_worker, 0, 'fails to register job worker with no processor okay ' );
     };
 
     it "creates job server worker okay" => sub {
@@ -117,6 +126,44 @@ describe 'FaktoryWorkerPerl::Worker' => sub {
         is( $client->push($substraction_job),
             $substraction_job->jid, "client pushes do_substraction_job job and returns job id okay" );
 
+        my $are_all_jobs_processed = 0;
+        do {
+            if ($are_all_jobs_processed) {
+                ok( $is_do_poc_job_called,          "worker calls poc job okay" );
+                ok( $is_do_addition_job_called,     "worker calls addition job okay" );
+                ok( $is_do_substraction_job_called, "worker calls substraction job okay" );
+
+                last;
+            } else {
+                say "worker is still waiting for poc job"          unless $is_do_poc_job_called;
+                say "worker is still waiting for addition job"     unless $is_do_addition_job_called;
+                say "worker is still waiting for substraction job" unless $is_do_substraction_job_called;
+
+                $worker->run();
+
+                usleep(1_000_000);
+            }
+
+            $are_all_jobs_processed =
+                $is_do_poc_job_called && $is_do_addition_job_called && $is_do_substraction_job_called;
+        } while ( !$are_all_jobs_processed );
+
+    };
+
+    it "processes job server client ack/fail jobs okay" => sub {
+
+        my $job_to_ack = FaktoryWorkerPerl::Job->new(
+            type => $do_poc_job,
+            args => [ int( rand(10) ), int( rand(10) ) ],
+        );
+        is( $client->push($job_to_ack), $job_to_ack->jid, "client pushes job to ack and returns job id okay" );
+
+        my $job_to_fail = FaktoryWorkerPerl::Job->new(
+            type => $do_poc_job,
+            args => [ int( rand(10) ), int( rand(10) ) ],
+        );
+        is( $client->push($job_to_fail), $job_to_fail->jid, "client pushes job to fail and returns job id okay" );
+
         my $job_json = $client->fetch( [qw< critical bulk >] );
         cmp_deeply( $job_json, {}, "client fetches no jobs for queues with no jobs" );
 
@@ -135,17 +182,16 @@ describe 'FaktoryWorkerPerl::Worker' => sub {
 
                 $worker->run();
 
+=begin
                 my $job_json = $client->fetch();
                 my $job_to_compare;
 
-=begin
                 if ( $job_json->{jid} eq $job_to_ack->jid ) {
                     ok( $client->ack( $job_to_ack->jid ), "client acks job to ack okay" );
                 } elsif ( $job_json->{jid} eq $job_to_fail->jid ) {
                     ok( $client->fail( $job_to_fail->jid, "Rejecting job for test" ),
                         "client sends failures for job to fail okay" );
                 }
-=cut
 
                 if ( $job_json->{jid} && $job_json->{jid} eq $addition_job->jid ) {
                     $job_to_compare = $addition_job;
@@ -170,6 +216,7 @@ describe 'FaktoryWorkerPerl::Worker' => sub {
                         sprintf( "client serializes %s job to json okay", $job_to_compare->type )
                     );
                 }
+=cut
 
                 usleep(1_000_000);
             }
@@ -177,25 +224,7 @@ describe 'FaktoryWorkerPerl::Worker' => sub {
             $are_all_jobs_processed =
                 $is_do_poc_job_called && $is_do_addition_job_called && $is_do_substraction_job_called;
         } while ( !$are_all_jobs_processed );
-
     };
-
-=begin
-    it "processes job server client ack/fail jobs okay" => sub {
-
-        my $job_to_ack = FaktoryWorkerPerl::Job->new(
-            type => $do_poc_job,
-            args => [ int( rand(10) ), int( rand(10) ) ],
-        );
-        is( $client->push($job_to_ack), $job_to_ack->jid, "client pushes job to ack and returns job id okay" );
-
-        my $job_to_fail = FaktoryWorkerPerl::Job->new(
-            type => $do_poc_job,
-            args => [ int( rand(10) ), int( rand(10) ) ],
-        );
-        is( $client->push($job_to_fail), $job_to_fail->jid, "client pushes job to fail and returns job id okay" );
-    };
-=cut
 
 };
 

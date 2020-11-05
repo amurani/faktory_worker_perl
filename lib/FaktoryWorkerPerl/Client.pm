@@ -8,7 +8,11 @@ Client that handles all communication with the Faktory job server and handles jo
 
 =cut
 
+use FindBin;
+use lib "$FindBin::Bin/lib";
+
 use Moose;
+use namespace::autoclean;
 use feature qw(signatures);
 no warnings qw(experimental::signatures);
 use IO::Socket::INET;
@@ -17,7 +21,7 @@ use Data::GUID;
 use Sys::Hostname;
 use Linux::Pid qw< getpid >;
 use Data::Dump qw< pp >;
-
+use FaktoryWorkerPerl::Job;
 with 'FaktoryWorkerPerl::Roles::Logger';
 
 use constant HOST             => 'localhost';
@@ -69,6 +73,8 @@ use constant NO_JOBS => "\$-1\r\n";
 Sends a FETCH to request a job from the Faktory job server in a list of queues
 Defaults to 'default' if no list is provided
 
+Returns an instance of FaktoryWorkerPerl::Job on success
+
 =cut
 
 sub fetch ( $self, $queues = [qw<default>] ) {
@@ -76,17 +82,17 @@ sub fetch ( $self, $queues = [qw<default>] ) {
     my $response      = $self->send( $client_socket, $self->FETCH, join( " ", @$queues ) );
     $self->logger->info( sprintf( "%s: %s", $self->FETCH, pp $response ) );
 
-    my $data;
+    my $job;
     if ( $response eq $self->NO_JOBS || $response eq $self->OK ) {
-        $data = "{}";
         $self->logger->info( sprintf("$self->FETCH returned no job") );
     } else {
-        $data = $self->recv($client_socket);
+        my $data = $self->recv($client_socket);
         $self->logger->info( sprintf( "recv fetch: %s", pp $data ) );
+        $job = FaktoryWorkerPerl::Job->new( %{ decode_json($data) } );
     }
     $self->_disconnect($client_socket);
 
-    return decode_json($data);
+    return $job;
 }
 
 =item push()

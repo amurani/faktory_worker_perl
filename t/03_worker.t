@@ -107,21 +107,21 @@ describe 'FaktoryWorkerPerl::Worker' => sub {
 
     it "processes job server client jobs okay" => sub {
         my $poc_job = FaktoryWorkerPerl::Job->new(
-            type => $do_poc_job,
-            args => [ int( rand(10) ), int( rand(10) ) ],
+            jobtype => $do_poc_job,
+            args    => [ int( rand(10) ), int( rand(10) ) ],
         );
         is( $client->push($poc_job), $poc_job->jid, "client pushes do_poc_job job and returns job id okay" );
 
         my $addition_job = FaktoryWorkerPerl::Job->new(
-            type => $do_addition_job,
-            args => [ int( rand(10) ), int( rand(10) ) ],
+            jobtype => $do_addition_job,
+            args    => [ int( rand(10) ), int( rand(10) ) ],
         );
         is( $client->push($addition_job),
             $addition_job->jid, "client pushes do_addition_job job and returns job id okay" );
 
         my $substraction_job = FaktoryWorkerPerl::Job->new(
-            type => $do_substraction_job,
-            args => [ int( rand(10) ), int( rand(10) ) ],
+            jobtype => $do_substraction_job,
+            args    => [ int( rand(10) ), int( rand(10) ) ],
         );
         is( $client->push($substraction_job),
             $substraction_job->jid, "client pushes do_substraction_job job and returns job id okay" );
@@ -153,18 +153,18 @@ describe 'FaktoryWorkerPerl::Worker' => sub {
     it "processes job server client ack/fail jobs okay" => sub {
 
         my $job_to_ack = FaktoryWorkerPerl::Job->new(
-            type => $do_poc_job,
-            args => [ int( rand(10) ), int( rand(10) ) ],
+            jobtype => $do_poc_job,
+            args    => [ int( rand(10) ), int( rand(10) ) ],
         );
         is( $client->push($job_to_ack), $job_to_ack->jid, "client pushes job to ack and returns job id okay" );
 
         my $job_to_fail = FaktoryWorkerPerl::Job->new(
-            type => $do_poc_job,
-            args => [ int( rand(10) ), int( rand(10) ) ],
+            jobtype => $do_poc_job,
+            args    => [ int( rand(10) ), int( rand(10) ) ],
         );
         is( $client->push($job_to_fail), $job_to_fail->jid, "client pushes job to fail and returns job id okay" );
 
-        cmp_deeply( $client->fetch( [qw< critical bulk >] ), {}, "client fetches no jobs for queues with no jobs" );
+        cmp_deeply( $client->fetch( [qw< critical bulk >] ), undef, "client fetches no jobs for queues with no jobs" );
 
         my $are_all_jobs_processed = 0;
         my ( $is_job_to_ack_processed, $is_job_to_fail_processed );
@@ -176,16 +176,16 @@ describe 'FaktoryWorkerPerl::Worker' => sub {
             } else {
                 say "worker is still waiting ack/fail jobs";
 
-                my $job_json = $client->fetch();    # get jobs from default queue
-                if ($job_json) {
+                my $job = $client->fetch();    # get jobs from default queue
+                if ($job) {
                     my $job_to_compare;
                     my $job_name;
 
-                    if ( $job_json->{jid} eq $job_to_ack->jid ) {
+                    if ( $job->jid eq $job_to_ack->jid ) {
                         ok( $client->ack( $job_to_ack->jid ), "client acks job to ack okay" );
                         $job_to_compare = $job_to_ack;
                         $job_name       = 'job_to_ack';
-                    } elsif ( $job_json->{jid} eq $job_to_fail->jid ) {
+                    } elsif ( $job->jid eq $job_to_fail->jid ) {
                         ok( $client->fail( $job_to_fail->jid, "Test Exception", "Rejecting job for test", [] ),
                             "client sends failures for job to fail okay" );
                         $job_to_compare = $job_to_fail;
@@ -193,14 +193,15 @@ describe 'FaktoryWorkerPerl::Worker' => sub {
                     }
 
                     if ($job_to_compare) {
+                        my $job_json = $job_to_compare->json_serialized;
                         cmp_deeply(
-                            $job_json,
+                            $job->json_serialized,
                             {
-                                args        => $job_to_compare->json_serialized->{args},
-                                jid         => $job_to_compare->json_serialized->{jid},
-                                jobtype     => $job_to_compare->json_serialized->{jobtype},
+                                args        => $job_json->{args},
                                 created_at  => ignore(),
                                 enqueued_at => ignore(),
+                                jid         => $job_json->{jid},
+                                jobtype     => $job_json->{jobtype},
                                 queue       => ignore(),
                                 retry       => ignore(),
                             },

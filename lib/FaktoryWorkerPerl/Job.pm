@@ -6,19 +6,50 @@ package FaktoryWorkerPerl::Job;
 
 A single unit of work to be pushed to the Faktory job server and processed by the worker
 
-TODO: factor in the job metadata https://github.com/contribsys/faktory/wiki/The-Job-Payload#metadata
 TODO: factor in the job options for faktopry worker https://github.com/contribsys/faktory/wiki/The-Job-Payload#options
 =cut
 
+use FindBin;
+use lib "$FindBin::Bin/lib";
+
 use Moose;
+use namespace::autoclean;
 use feature qw(signatures);
 no warnings qw(experimental::signatures);
+use FaktoryWorkerPerl::Types::Queue;
 use Data::GUID;
 
-has type => (
+has jid => (
+    is      => 'ro',
+    isa     => 'Str',
+    builder => '_build_jid',
+    lazy    => 1,
+);
+
+has jobtype => (
     is       => 'rw',
     isa      => 'Str',
     required => 1,
+);
+
+has created_at => (
+    is  => 'rw',
+    isa => 'Str',
+);
+
+has enqueued_at => (
+    is  => 'rw',
+    isa => 'Str',
+);
+
+has queue => (
+    is  => 'rw',
+    isa => 'Queue',
+);
+
+has retry => (
+    is  => 'rw',
+    isa => 'Int',
 );
 
 has args => (
@@ -26,13 +57,6 @@ has args => (
     isa      => 'ArrayRef',
     default  => sub { [] },
     required => 0,
-);
-
-has jid => (
-    is      => 'ro',
-    isa     => 'Str',
-    builder => '_build_jid',
-    lazy    => 1,
 );
 
 has json_serialized => (
@@ -61,11 +85,8 @@ Generate a json serialization for the job
 =cut
 
 sub _build_json_serialization($self) {
-    return {
-        jid     => $self->jid,
-        jobtype => $self->type,
-        args    => $self->args,
-    };
+    my %job = map { $_ => $self->$_ } qw< jid jobtype created_at enqueued_at queue retry args >;
+    return \%job;
 }
 
 __PACKAGE__->meta->make_immutable;

@@ -8,23 +8,25 @@ Worker that handles fetching jobs from the Faktory job server and processes them
 
 =cut
 
+use FindBin;
+use lib "$FindBin::Bin/lib";
+
 use Moose;
-use Moose::Util::TypeConstraints;
+use namespace::autoclean;
 use feature qw(signatures say);
 no warnings qw(experimental::signatures);
 use Time::HiRes qw< usleep >;
 use Data::Dump qw< pp >;
+use FaktoryWorkerPerl::Types::Queue;
 
 with 'FaktoryWorkerPerl::Roles::Logger';
 
-class_type Client => { class => 'FaktoryWorkerPerl::Client' };
-has client        => (
+has client => (
     is       => 'rw',
-    isa      => 'Client',
+    isa      => 'FaktoryWorkerPerl::Client',
     required => 1,
 );
 
-enum Queue => [qw< critical default bulk >];
 has queues => (
     is      => 'rw',
     isa     => 'ArrayRef[Queue]',

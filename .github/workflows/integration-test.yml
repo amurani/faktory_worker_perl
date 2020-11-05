@@ -37,5 +37,5 @@ jobs:
           docker-compose -v
 
       - name: Run tests for library
-        run: make test
+        run: make tests
 

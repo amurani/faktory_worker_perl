@@ -1,5 +1,6 @@
 # Borrows references from https://github.com/marketplace/actions/install-with-cpanm
 name: integration-test
+description: 'Runs tests to validated the FaktoryWorkerPerl library behaves as expected'
 
 # Run this action whenever one pushes to repository or creates a pull request
 on: [push, pull_request]
@@ -29,8 +30,8 @@ jobs:
           cpanfile: "cpanfile"
           sudo: false
 
-      - name: Test docker-compose
-        run: docker-compose -v
+      - name: Test docker
+        run: docker -v
 
       - name: Run tests for library
         run: make test

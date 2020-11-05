@@ -19,7 +19,9 @@ jobs:
 
       - name: Install perl dependencies
         uses: perl-actions/install-with-cpanm@v1.1
-        run: make install_deps
+        with:
+          cpanfile: "cpanfile"
+          sudo: false
 
       - name: Run tests for library
         run: make test

@@ -214,13 +214,14 @@ Returns instance of socket connection
 =cut
 
 sub _connect($self) {
-    my $client_socket = IO::Socket::INET->new(
-        PeerAddr => $self->host,
-        PeerPort => $self->port,
-        Proto    => 'tcp',
-    ) or die sprintf( "cannot connect to %s:%s", $self->host, $self->port );
+    my $client_socket;
 
     eval {
+        $client_socket = IO::Socket::INET->new(
+            PeerAddr => $self->host,
+            PeerPort => $self->port,
+            Proto    => 'tcp',
+        ) or die sprintf( "Failed to establish connection on %s:%s", $self->host, $self->port );
         my $data = $self->recv($client_socket);
 
         my $handshake_payload          = { v => $self->protocol_version };
@@ -237,9 +238,11 @@ sub _connect($self) {
         my $response = $self->send( $client_socket, $self->HELLO, encode_json($hello_payload) );
         die sprintf( "Handshake: HI did not get sent :( %s", $response || '!! NO RESPNSE RECIEVED!!' )
             unless ( $response eq $self->OK );
+
+        1;
     } or do {
         my $error = $@;
-        die "Error connecting to Faktory job server: $error";
+        die sprintf( "Error connecting to Faktory job server due to: %s", $error );
     };
 
     return $client_socket;

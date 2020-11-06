@@ -24,10 +24,11 @@ use Data::Dump qw< pp >;
 use FaktoryWorkerPerl::Job;
 with 'FaktoryWorkerPerl::Roles::Logger';
 
-use constant HOST             => 'localhost';
-use constant PORT             => '7419';
+use constant HOST             => $ENV{FAKTORY_HOST};
+use constant PORT             => $ENV{FAKTORY_PORT};
 use constant PROTOCOL_VERSION => 2;
-has host                      => (
+
+has host => (
     is       => 'rw',
     isa      => 'Str',
     required => 0,

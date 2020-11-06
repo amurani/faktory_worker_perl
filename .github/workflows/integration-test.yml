@@ -7,15 +7,14 @@ on: [push, pull_request]
 jobs:
   test:
 
-    runs-on: ubuntu-latest
     name: "perl v${{ matrix.perl-version }}"
-
     strategy:
       fail-fast: false
       matrix:
         perl-version:
           - "5.30"
 
+    runs-on: ubuntu-latest
     container:
       image: perldocker/perl-tester:${{ matrix.perl-version }}
 
@@ -24,7 +23,6 @@ jobs:
         image: contribsys/faktory:latest
         ports:
           - 7419:7419
-          - 7420:7420
 
     steps:
       - name: Checkout
@@ -36,9 +34,8 @@ jobs:
           cpanfile: "cpanfile"
           sudo: false
 
-      - name: Test to see if faktory server is running
-        run: "curl --verbose --silent --output /dev/null http://127.0.0.1:${{ job.services.faktory.ports['7420'] }}"
-
       - name: Run tests for library
         run: make tests
-
+        env:
+          FAKTORY_HOST: localhost
+					FAKTORY_PORT: 7419

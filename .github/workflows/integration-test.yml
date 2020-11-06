@@ -38,4 +38,4 @@ jobs:
         run: make tests
         env:
           FAKTORY_HOST: localhost
-					FAKTORY_PORT: 7419
+          FAKTORY_PORT: 7419

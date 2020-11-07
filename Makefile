@@ -1,8 +1,11 @@
 # Include dotenv file
-ifneq (,$(wildcard ./.env))
-    include .env
-    export
-endif
+ENV ?= development    # set this as the default end
+-include .env        # load default environment values
+-include .env.$(ENV) # load any environments values based on specific environments
+export
+
+get_environment:
+	echo Running in $(ENV)
 
 # Install needed perl dependencies
 install_deps:

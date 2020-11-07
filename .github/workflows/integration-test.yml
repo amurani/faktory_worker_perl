@@ -35,4 +35,4 @@ jobs:
           sudo: false
 
       - name: Run tests for library
-        run: make tests
+        run: ENV=ci make tests

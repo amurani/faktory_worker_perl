@@ -19,8 +19,8 @@ describe 'FaktoryWorkerPerl::Client' => sub {
     it "creates job server client okay" => sub {
         $client = FaktoryWorkerPerl::Client->new;
         ok( $client, "client is created okay" );
-        is( $client->port, 7419,        "client port is 7419" );
-        is( $client->host, 'localhost', "client host is localhost" );
+        is( $client->port, 7419, "client port is 7419" );
+        is( $client->host, $ENV{FAKTORY_HOST}, "client host is localhost" );
     };
 
     it "job server client operations works okay" => sub {

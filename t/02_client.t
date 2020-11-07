@@ -20,7 +20,7 @@ describe 'FaktoryWorkerPerl::Client' => sub {
         $client = FaktoryWorkerPerl::Client->new;
         ok( $client, "client is created okay" );
         is( $client->port, 7419, "client port is 7419" );
-        is( $client->host, $ENV{FAKTORY_HOST}, "client host is localhost" );
+        is( $client->host, $ENV{FAKTORY_HOST}, sprintf( "client host is read as %s", $ENV{FAKTORY_HOST} ) );
     };
 
     it "job server client operations works okay" => sub {

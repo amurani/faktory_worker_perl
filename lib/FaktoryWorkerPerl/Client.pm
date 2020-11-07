@@ -21,7 +21,6 @@ use Data::GUID;
 use Digest::SHA qw< sha256 >;
 use Sys::Hostname;
 use Linux::Pid qw< getpid >;
-use Protocol::Redis;
 use Data::Dump qw< pp >;
 use FaktoryWorkerPerl::Job;
 use FaktoryWorkerPerl::Response;

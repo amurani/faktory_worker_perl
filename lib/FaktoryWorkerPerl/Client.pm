@@ -18,14 +18,19 @@ no warnings qw(experimental::signatures);
 use IO::Socket::INET;
 use JSON;
 use Data::GUID;
+use Digest::SHA qw< sha256 >;
 use Sys::Hostname;
 use Linux::Pid qw< getpid >;
+use Protocol::Redis;
 use Data::Dump qw< pp >;
 use FaktoryWorkerPerl::Job;
+use FaktoryWorkerPerl::Response;
+use FaktoryWorkerPerl::Types::Constants qw< :RequestCommand :ResponseType >;
 with 'FaktoryWorkerPerl::Roles::Logger';
 
 use constant HOST             => $ENV{FAKTORY_HOST};
 use constant PORT             => $ENV{FAKTORY_PORT};
+use constant PASSWORD         => $ENV{FAKTORY_PASSWORD};
 use constant PROTOCOL_VERSION => 2;
 
 has host => (
@@ -42,6 +47,13 @@ has port => (
     default  => sub { PORT },
 );
 
+has password => (
+    is       => 'rw',
+    isa      => 'Str',
+    required => 0,
+    default  => sub { PASSWORD },
+);
+
 has protocol_version => (
     is       => 'ro',
     isa      => 'Int',
@@ -56,16 +68,11 @@ has wid => (
     default => sub { Data::GUID->new->as_string },
 );
 
-use constant HELLO => 'HELLO';
-use constant PUSH  => 'PUSH';
-use constant ACK   => 'ACK';
-use constant FAIL  => 'FAIL';
-use constant FETCH => 'FETCH';
-use constant BEAT  => 'BEAT';
-
-use constant HI      => "+HI";
-use constant OK      => "+OK\r\n";
-use constant NO_JOBS => "\$-1\r\n";
+has labels => (
+    is      => 'rw',
+    isa     => 'ArrayRef[Str]',
+    default => sub { [qw<perl>] },
+);
 
 =over
 
@@ -80,12 +87,11 @@ Returns an instance of FaktoryWorkerPerl::Job on success
 
 sub fetch ( $self, $queues = [qw<default>] ) {
     my $client_socket = $self->_connect();
-    my $response      = $self->send( $client_socket, $self->FETCH, join( " ", @$queues ) );
-    $self->logger->info( sprintf( "%s: %s", $self->FETCH, pp $response ) );
+    my $response      = $self->send( $client_socket, FETCH, join( " ", @$queues ) );
 
     my $job;
-    if ( $response eq $self->NO_JOBS || $response eq $self->OK ) {
-        $self->logger->info( sprintf("$self->FETCH returned no job") );
+    if ( $response->has_no_jobs || $response->is_okay ) {
+        $self->logger->info( sprintf("${\FETCH} returned no job") );
     } else {
         my $data = $self->recv($client_socket);
         $self->logger->info( sprintf( "recv fetch: %s", pp $data ) );
@@ -105,10 +111,15 @@ Returns the job id once pushed
 sub push ( $self, $job ) {
     my $client_socket = $self->_connect();
     my $job_payload   = $job->json_serialized;
-    my $response      = $self->send( $client_socket, $self->PUSH, encode_json($job_payload) );
-    $self->logger->info( sprintf( "$self->PUSH: %s", pp $response ) );
+    my $response      = $self->send( $client_socket, PUSH, encode_json($job_payload) );
     $self->_disconnect($client_socket);
-    return $job->jid;
+
+    if ( $response->is_okay ) {
+        return $job->jid;
+    } else {
+        warn "Failed to send job to Faktory job server";
+        return undef;
+    }
 }
 
 =item ack()
@@ -119,10 +130,10 @@ Sends an ACK when a job has been processed successfully
 sub ack ( $self, $job_id ) {
     my $client_socket = $self->_connect();
     my $ack_payload   = { jid => $job_id };
-    my $response      = $self->send( $client_socket, $self->ACK, encode_json($ack_payload) );
-    $self->logger->info( sprintf( "$self->ACK: %s", pp $response ) );
+    my $response      = $self->send( $client_socket, ACK, encode_json($ack_payload) );
     $self->_disconnect($client_socket);
-    return $response eq $self->OK;
+
+    return $response->is_okay;
 }
 
 =item fail()
@@ -133,10 +144,10 @@ Sends a FAIL when a job has  not been processed successfully
 sub fail ( $self, $job_id, $error_type, $error_message, $backtrace ) {
     my $client_socket = $self->_connect();
     my $fail_payload  = { jid => $job_id, errtype => $error_type, message => $error_message, backtrace => $backtrace };
-    my $response      = $self->send( $client_socket, $self->FAIL, encode_json($fail_payload) );
-    $self->logger->info( sprintf( "$self->FAIL: %s", pp $response ) );
+    my $response      = $self->send( $client_socket, FAIL, encode_json($fail_payload) );
     $self->_disconnect($client_socket);
-    return $response eq $self->OK;
+
+    return $response->is_okay;
 }
 
 =item beat()
@@ -148,14 +159,13 @@ Sends a BEAT as required for proof of liveness
 sub beat($self) {
     my $client_socket = $self->_connect();
     my $beat_payload  = { wid => $self->wid };
-    my $response      = $self->send( $client_socket, $self->BEAT, encode_json($beat_payload) );
-    $self->logger->info( sprintf( "$self->BEAT: %s", pp $response ) );
+    my $response      = $self->send( $client_socket, BEAT, encode_json($beat_payload) );
     $self->_disconnect($client_socket);
 
-    if ( $response =~ m/^{.*$/ ) {
-        return decode_json($response)->{state};
+    if ( $response->data ) {
+        return $response->data->{state};
     } else {
-        return $response eq $self->OK;
+        return $response->is_okay;
     }
 }
 
@@ -184,6 +194,7 @@ sub recv ( $self, $client_socket ) {
 =item send()
 
 Sends payload to Faktory job server
+Returns Faktory job server response as an instance of FaktoryWorkerPerl::Response
 
 =cut
 
@@ -192,10 +203,12 @@ sub send ( $self, $client_socket, $command, $data ) {
 
     eval {
         my $payload = sprintf( "%s %s\r\n", $command, $data );
-        $self->logger->info( sprintf( "send payload: %s", pp $payload ) );
+        $self->logger->info( sprintf( "$command [request]: %s", pp $payload ) );
         print $client_socket $payload;
-        $response = $self->recv($client_socket);
-        $self->logger->info( sprintf( "send response: %s", pp $response ) );
+        my $raw_response = $self->recv($client_socket);
+        $self->logger->info( sprintf( "$command [response]: %s", pp $raw_response ) );
+
+        $response = FaktoryWorkerPerl::Response->new( raw_response => $raw_response );
 
         1;
     } or do {
@@ -222,22 +235,31 @@ sub _connect($self) {
             PeerPort => $self->port,
             Proto    => 'tcp',
         ) or die sprintf( "Failed to establish connection on %s:%s", $self->host, $self->port );
-        my $data = $self->recv($client_socket);
+        my $handshake_response = $self->recv($client_socket);
+        $self->logger->info( sprintf( "${\HI} [response]: %s", pp $handshake_response ) );
 
-        my $handshake_payload          = { v => $self->protocol_version };
-        my $expected_handshake_reponse = sprintf( "%s %s\r\n", $self->HI, encode_json($handshake_payload) );
-        die "Handshake: HI not received :( $data"
-            unless ( $data eq $expected_handshake_reponse );
+        my $response = FaktoryWorkerPerl::Response->new( raw_response => $handshake_response );
+        die sprintf( "Handshake: ${\HI} failed due to: %s", $response->message || "!! NO MESSAGE RECIEVED!!" )
+            unless $response->is_handshake;
+
+        my $handshake_payload          = $response->data;
+        my $is_authentication_required = exists $handshake_payload->{s} && exists $handshake_payload->{i};
+
+        die sprintf("Handshake: ${\HELLO} requires a password") if $is_authentication_required && !$self->password;
+
         my $hello_payload = {
-            v        => $self->protocol_version,
-            wid      => $self->wid,
             hostname => hostname,
             pid      => getpid,
-            labels   => [qw< perl >],
+            v        => $self->protocol_version,
+            wid      => $self->wid,
+            scalar @{ $self->labels } ? ( labels => $self->labels ) : (),
+            $is_authentication_required
+            ? ( pwdhash => $self->_generate_password_hash( $handshake_payload->{s}, $handshake_payload->{i} ) )
+            : (),
         };
-        my $response = $self->send( $client_socket, $self->HELLO, encode_json($hello_payload) );
-        die sprintf( "Handshake: HI did not get sent :( %s", $response || '!! NO RESPNSE RECIEVED!!' )
-            unless ( $response eq $self->OK );
+        $response = $self->send( $client_socket, HELLO, encode_json($hello_payload) );
+        die sprintf( "Handshake: ${\HELLO} failed due to: %s", $response->message || '!! NO RESPNSE RECIEVED!!' )
+            unless $response->is_okay;
 
         1;
     } or do {
@@ -256,6 +278,22 @@ Closes TCP network connection to Faktory job server
 
 sub _disconnect ( $self, $client_socket ) {
     return $client_socket->close();
+}
+
+=item _generate_password_hash()
+
+Calculates the password hash needed for authentication on the Faktory job server
+
+=cut
+
+sub _generate_password_hash ( $self, $salt, $iterations ) {
+    my $password_hash = Digest::SHA->new(256)->add( sprintf( "%s%s", $self->password, $salt ) )->digest;
+    for ( 1 .. $iterations - 1 ) {
+        my $sha         = Digest::SHA->new(256)->add($password_hash);
+        my $is_last_run = $_ == $iterations - 1;
+        $password_hash = $is_last_run ? $sha->hexdigest : $sha->digest;
+    }
+    return $password_hash;
 }
 
 __PACKAGE__->meta->make_immutable;

@@ -83,6 +83,7 @@ describe 'FaktoryWorkerPerl::Worker' => sub {
             $no_name_woker = $worker->register( undef, sub { } )
         }
         "An job processor cannot be registered without a job type";
+
         warnings_are { $no_processor_worker = $worker->register( 'fake_job', undef ) }
         [ "A job processor cannot be undefined", "A job processor must be a runnable subroutine" ];
 

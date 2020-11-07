@@ -117,7 +117,7 @@ sub push ( $self, $job ) {
     if ( $response->is_okay ) {
         return $job->jid;
     } else {
-        warn "Failed to send job to Faktory job server";
+        warn sprintf( "Failed to send job to Faktory job server. Job id: %s", $job->jid );
         return undef;
     }
 }

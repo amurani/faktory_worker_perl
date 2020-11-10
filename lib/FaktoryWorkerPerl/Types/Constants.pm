@@ -1,4 +1,4 @@
-package FaktoryWorkerPerl::Types::Constants;
+package FaktoryWorker::Types::Constants;
 
 use constant ACK   => 'ACK';
 use constant BEAT  => 'BEAT';

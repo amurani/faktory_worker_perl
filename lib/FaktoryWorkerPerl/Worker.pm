@@ -1,8 +1,8 @@
-package FaktoryWorkerPerl::Worker;
+package FaktoryWorker::Worker;
 
 =pod
 
-=head1 FaktoryWorkerPerl::Worker
+=head1 FaktoryWorker::Worker
 
 Worker that handles fetching jobs from the Faktory job server and processes them
 
@@ -17,13 +17,13 @@ use feature qw(signatures say);
 no warnings qw(experimental::signatures);
 use Time::HiRes qw< usleep >;
 use Data::Dump qw< pp >;
-use FaktoryWorkerPerl::Types::Queue;
+use FaktoryWorker::Types::Queue;
 
-with 'FaktoryWorkerPerl::Roles::Logger';
+with 'FaktoryWorker::Roles::Logger';
 
 has client => (
     is       => 'rw',
-    isa      => 'FaktoryWorkerPerl::Client',
+    isa      => 'FaktoryWorker::Client',
     required => 1,
 );
 
@@ -68,7 +68,7 @@ sub register ( $self, $job_type, $callable ) {
     }
 
     unless ($callable) {
-        warn "A job processor cannot be undefined" unless $callable;
+        warn "A job processor cannot be undefined"           unless $callable;
         warn "A job processor must be a runnable subroutine" unless ref $callable eq 'CODE';
         return 0;
     }

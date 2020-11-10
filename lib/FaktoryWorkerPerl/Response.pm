@@ -1,8 +1,8 @@
-package FaktoryWorkerPerl::Response;
+package FaktoryWorker::Response;
 
 =pod
 
-=head1 FaktoryWorkerPerl::Response
+=head1 FaktoryWorker::Response
 
 Response object for a parsed version of Faktory job server response
 
@@ -17,7 +17,7 @@ use feature qw(signatures);
 no warnings qw(experimental::signatures);
 use JSON;
 use Data::Dump qw< pp >;
-use FaktoryWorkerPerl::Types::Constants qw< :ResponseType >;
+use FaktoryWorker::Types::Constants qw< :ResponseType >;
 
 has raw_response => (
     is       => 'rw',
@@ -57,7 +57,7 @@ around BUILDARGS => sub {
     } else {
         my ( $type, $data ) = split /\s+(.*)/, $raw_response;
         $parsed_response = {
-            $type ? ( type => $type ) : (),
+            $type ? ( type => $type )                                                               : (),
             $data ? ( $data =~ m/^{.*$/ ? ( data => decode_json($data), ) : ( message => $data ), ) : ()
         };
     }

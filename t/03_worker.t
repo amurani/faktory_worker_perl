@@ -10,11 +10,11 @@ use Data::Dump qw< pp >;
 use FindBin;
 use lib "$FindBin::Bin/../lib";
 
-require_ok('FaktoryWorkerPerl::Worker');
-require_ok('FaktoryWorkerPerl::Client');
-require_ok('FaktoryWorkerPerl::Job');
+require_ok('FaktoryWorker::Worker');
+require_ok('FaktoryWorker::Client');
+require_ok('FaktoryWorker::Job');
 
-describe 'FaktoryWorkerPerl::Worker' => sub {
+describe 'FaktoryWorker::Worker' => sub {
     my ( $client, $worker );
     my ( $do_poc_job, $do_addition_job, $do_substraction_job );
 
@@ -55,8 +55,8 @@ describe 'FaktoryWorkerPerl::Worker' => sub {
     );
 
     before all => sub {
-        $client = FaktoryWorkerPerl::Client->new;
-        $worker = FaktoryWorkerPerl::Worker->new(
+        $client = FaktoryWorker::Client->new;
+        $worker = FaktoryWorker::Worker->new(
             client => $client,
             queues => [qw< critical default bulk >],
         );
@@ -107,20 +107,20 @@ describe 'FaktoryWorkerPerl::Worker' => sub {
     };
 
     it "processes job server client jobs okay" => sub {
-        my $poc_job = FaktoryWorkerPerl::Job->new(
+        my $poc_job = FaktoryWorker::Job->new(
             jobtype => $do_poc_job,
             args    => [ int( rand(10) ), int( rand(10) ) ],
         );
         is( $client->push($poc_job), $poc_job->jid, "client pushes do_poc_job job and returns job id okay" );
 
-        my $addition_job = FaktoryWorkerPerl::Job->new(
+        my $addition_job = FaktoryWorker::Job->new(
             jobtype => $do_addition_job,
             args    => [ int( rand(10) ), int( rand(10) ) ],
         );
         is( $client->push($addition_job),
             $addition_job->jid, "client pushes do_addition_job job and returns job id okay" );
 
-        my $substraction_job = FaktoryWorkerPerl::Job->new(
+        my $substraction_job = FaktoryWorker::Job->new(
             jobtype => $do_substraction_job,
             args    => [ int( rand(10) ), int( rand(10) ) ],
         );
@@ -153,13 +153,13 @@ describe 'FaktoryWorkerPerl::Worker' => sub {
 
     it "processes job server client ack/fail jobs okay" => sub {
 
-        my $job_to_ack = FaktoryWorkerPerl::Job->new(
+        my $job_to_ack = FaktoryWorker::Job->new(
             jobtype => $do_poc_job,
             args    => [ int( rand(10) ), int( rand(10) ) ],
         );
         is( $client->push($job_to_ack), $job_to_ack->jid, "client pushes job to ack and returns job id okay" );
 
-        my $job_to_fail = FaktoryWorkerPerl::Job->new(
+        my $job_to_fail = FaktoryWorker::Job->new(
             jobtype => $do_poc_job,
             args    => [ int( rand(10) ), int( rand(10) ) ],
         );

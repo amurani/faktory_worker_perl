@@ -4,15 +4,15 @@ use Test::More;
 use FindBin;
 use lib "$FindBin::Bin/../lib";
 
-describe 'FaktoryWorkerPerl::Job' => sub {
+describe 'FaktoryWorker::Job' => sub {
 
     it "package(s) required ok" => sub {
-        require_ok('FaktoryWorkerPerl::Job');
+        require_ok('FaktoryWorker::Job');
     };
 
     it "creates job server job okay", sub {
 
-        my $job = FaktoryWorkerPerl::Job->new(
+        my $job = FaktoryWorker::Job->new(
             jobtype => 'poc_job',
             args    => [ int( rand(10) ), int( rand(10) ) ],
         );

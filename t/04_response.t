@@ -4,22 +4,22 @@ use Test::More;
 use FindBin;
 use lib "$FindBin::Bin/../lib";
 
-use FaktoryWorkerPerl::Types::Constants qw< :ResponseType >;
+use FaktoryWorker::Types::Constants qw< :ResponseType >;
 
 use Data::Dump qw< pp >;
 
-describe 'FaktoryWorkerPerl::Response' => sub {
+describe 'FaktoryWorker::Response' => sub {
 
     it "package(s) required ok" => sub {
-        require_ok('FaktoryWorkerPerl::Response');
-        require_ok('FaktoryWorkerPerl::Types::Constants');
+        require_ok('FaktoryWorker::Response');
+        require_ok('FaktoryWorker::Types::Constants');
     };
 
     it "creates job server response object okay", sub {
         my ( $raw_response, $response );
 
         $raw_response = "+OK\r\n";
-        $response     = FaktoryWorkerPerl::Response->new( raw_response => $raw_response );
+        $response     = FaktoryWorker::Response->new( raw_response => $raw_response );
         cmp_deeply(
             {
                 type    => $response->type,
@@ -35,7 +35,7 @@ describe 'FaktoryWorkerPerl::Response' => sub {
         );
 
         $raw_response = "\$-1\r\n";
-        $response     = FaktoryWorkerPerl::Response->new( raw_response => $raw_response );
+        $response     = FaktoryWorker::Response->new( raw_response => $raw_response );
         cmp_deeply(
             {
                 type    => $response->type,
@@ -51,7 +51,7 @@ describe 'FaktoryWorkerPerl::Response' => sub {
         );
 
         $raw_response = "{\"state\":\"quiet\"}";
-        $response     = FaktoryWorkerPerl::Response->new( raw_response => $raw_response );
+        $response     = FaktoryWorker::Response->new( raw_response => $raw_response );
         cmp_deeply(
             {
                 type    => $response->type,
@@ -67,7 +67,7 @@ describe 'FaktoryWorkerPerl::Response' => sub {
         );
 
         $raw_response = "-ERR Invalid password\r\n";
-        $response     = FaktoryWorkerPerl::Response->new( raw_response => $raw_response );
+        $response     = FaktoryWorker::Response->new( raw_response => $raw_response );
         cmp_deeply(
             {
                 type    => $response->type,
@@ -83,7 +83,7 @@ describe 'FaktoryWorkerPerl::Response' => sub {
         );
 
         $raw_response = "+HI {\"v\":2,\"i\":7365,\"s\":\"33415dbd315ae6af\"}\r\n";
-        $response     = FaktoryWorkerPerl::Response->new( raw_response => $raw_response );
+        $response     = FaktoryWorker::Response->new( raw_response => $raw_response );
         cmp_deeply(
             {
                 type    => $response->type,

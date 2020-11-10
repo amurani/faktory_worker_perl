@@ -7,19 +7,19 @@ use Data::Dump qw< pp >;
 use FindBin;
 use lib "$FindBin::Bin/../lib";
 
-describe 'FaktoryWorkerPerl::Client' => sub {
+describe 'FaktoryWorker::Client' => sub {
 
     it "package(s) required ok" => sub {
-        require_ok('FaktoryWorkerPerl::Client');
-        require_ok('FaktoryWorkerPerl::Job');
+        require_ok('FaktoryWorker::Client');
+        require_ok('FaktoryWorker::Job');
     };
 
     my $client;
 
     it "creates job server client okay" => sub {
-        $client = FaktoryWorkerPerl::Client->new;
+        $client = FaktoryWorker::Client->new;
         ok( $client, "client is created okay" );
-        is( $client->port, 7419, "client port is 7419" );
+        is( $client->port, 7419,               "client port is 7419" );
         is( $client->host, $ENV{FAKTORY_HOST}, sprintf( "client host is read as %s", $ENV{FAKTORY_HOST} ) );
     };
 

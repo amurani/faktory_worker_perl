@@ -1,4 +1,4 @@
-package FaktoryWorkerPerl::Roles::Logger;
+package FaktoryWorker::Roles::Logger;
 
 use Moose::Role;
 use Log::Log4perl qw< :levels get_logger >;

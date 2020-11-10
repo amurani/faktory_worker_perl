@@ -1,8 +1,8 @@
-package FaktoryWorkerPerl::Job;
+package FaktoryWorker::Job;
 
 =pod
 
-=head1 FaktoryWorkerPerl::Job
+=head1 FaktoryWorker::Job
 
 A single unit of work to be pushed to the Faktory job server and processed by the worker
 
@@ -17,7 +17,7 @@ use Moose;
 use namespace::autoclean;
 use feature qw(signatures);
 no warnings qw(experimental::signatures);
-use FaktoryWorkerPerl::Types::Queue;
+use FaktoryWorker::Types::Queue;
 use Data::GUID;
 
 has args => (

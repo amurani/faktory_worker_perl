@@ -1,4 +1,4 @@
-package FaktoryWorkerPerl::Types::Queue;
+package FaktoryWorker::Types::Queue;
 
 use Moose;
 use Moose::Util::TypeConstraints;

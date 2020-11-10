@@ -1,8 +1,8 @@
-package FaktoryWorkerPerl::Client;
+package FaktoryWorker::Client;
 
 =pod
 
-=head1 FaktoryWorkerPerl::Client
+=head1 FaktoryWorker::Client
 
 Client that handles all communication with the Faktory job server and handles job interactions
 
@@ -22,10 +22,10 @@ use Digest::SHA qw< sha256 >;
 use Sys::Hostname;
 use Linux::Pid qw< getpid >;
 use Data::Dump qw< pp >;
-use FaktoryWorkerPerl::Job;
-use FaktoryWorkerPerl::Response;
-use FaktoryWorkerPerl::Types::Constants qw< :RequestCommand :ResponseType >;
-with 'FaktoryWorkerPerl::Roles::Logger';
+use FaktoryWorker::Job;
+use FaktoryWorker::Response;
+use FaktoryWorker::Types::Constants qw< :RequestCommand :ResponseType >;
+with 'FaktoryWorker::Roles::Logger';
 
 use constant HOST             => $ENV{FAKTORY_HOST};
 use constant PORT             => $ENV{FAKTORY_PORT};
@@ -80,7 +80,7 @@ has labels => (
 Sends a FETCH to request a job from the Faktory job server in a list of queues
 Defaults to 'default' if no list is provided
 
-Returns an instance of FaktoryWorkerPerl::Job on success
+Returns an instance of FaktoryWorker::Job on success
 
 =cut
 
@@ -94,7 +94,7 @@ sub fetch ( $self, $queues = [qw<default>] ) {
     } else {
         my $data = $self->recv($client_socket);
         $self->logger->info( sprintf( "recv fetch: %s", pp $data ) );
-        $job = FaktoryWorkerPerl::Job->new( %{ decode_json($data) } );
+        $job = FaktoryWorker::Job->new( %{ decode_json($data) } );
     }
     $self->_disconnect($client_socket);
 
@@ -193,7 +193,7 @@ sub recv ( $self, $client_socket ) {
 =item send()
 
 Sends payload to Faktory job server
-Returns Faktory job server response as an instance of FaktoryWorkerPerl::Response
+Returns Faktory job server response as an instance of FaktoryWorker::Response
 
 =cut
 
@@ -207,7 +207,7 @@ sub send ( $self, $client_socket, $command, $data ) {
         my $raw_response = $self->recv($client_socket);
         $self->logger->info( sprintf( "$command [response]: %s", pp $raw_response ) );
 
-        $response = FaktoryWorkerPerl::Response->new( raw_response => $raw_response );
+        $response = FaktoryWorker::Response->new( raw_response => $raw_response );
 
         1;
     } or do {
@@ -237,7 +237,7 @@ sub _connect($self) {
         my $handshake_response = $self->recv($client_socket);
         $self->logger->info( sprintf( "${\HI} [response]: %s", pp $handshake_response ) );
 
-        my $response = FaktoryWorkerPerl::Response->new( raw_response => $handshake_response );
+        my $response = FaktoryWorker::Response->new( raw_response => $handshake_response );
         die sprintf( "Handshake: ${\HI} failed due to: %s", $response->message || "!! NO MESSAGE RECIEVED!!" )
             unless $response->is_handshake;
 

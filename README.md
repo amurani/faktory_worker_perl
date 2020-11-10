@@ -64,8 +64,8 @@ $worker->run(my $daemonize = 1 );
 - [x] Tests
 - [x] Authentication
 - [x] Labels
-- [] Mutate API
-- [] Concurrency
+- [ ] Mutate API
+- [ ] Concurrency
 
 ## Development
 

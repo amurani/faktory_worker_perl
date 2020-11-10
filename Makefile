@@ -25,10 +25,10 @@ tests:
 
 # Run tests for Faktory Perl Library with Faktory job server daemonized
 run_tests:
-	echo "Starting FaktoryWorkerPerl tests"
+	echo "Starting FaktoryWorker tests"
 	docker-compose -f docker-compose.yml up -d
 	make tests
 	docker-compose down
-	echo "Finshed FaktoryWorkerPerl tests"
+	echo "Finshed FaktoryWorker tests"
 
 

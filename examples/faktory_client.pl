@@ -7,14 +7,17 @@ use feature qw(say);
 use FindBin;
 use lib "$FindBin::Bin/../lib";
 
-use FaktoryWorkerPerl::Client;
-use FaktoryWorkerPerl::Job;
+use FaktoryWorker::Client;
+use FaktoryWorker::Job;
 use Time::HiRes qw< usleep >;
 use Data::Dump qw< pp >;
 
-my $client = FaktoryWorkerPerl::Client->new;
+my $client = FaktoryWorker::Client->new(
+    host => "localhost",
+    port => 7419,
+);
 do {
-    my $job = FaktoryWorkerPerl::Job->new(
+    my $job = FaktoryWorker::Job->new(
         type    => 'poc_job',
         args    => [ int( rand(10) ), int( rand(10) ) ],
         logging => 1,

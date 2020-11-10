@@ -20,11 +20,14 @@ TODO: @amurani follow up on this section
 ### Pushing jobs
 
 ```perl
-use FaktoryWorkerPerl::Client;
-use FaktoryWorkerPerl::Job;
+use FaktoryWorker::Client;
+use FaktoryWorker::Job;
 
-my $client = FaktoryWorkerPerl::Client->new;
-my $job = FaktoryWorkerPerl::Job->new(
+my $client = FaktoryWorker::Client->new(
+    host => "localhost",
+    port => 7419,
+);
+my $job = FaktoryWorker::Job->new(
     type => 'test_job',
     args => [ int(rand(10)), int(rand(10)) ],
 );
@@ -35,11 +38,14 @@ my $job_id = $client->push($job);
 ### Processing jobs
 
 ```perl
-use FaktoryWorkerPerl::Client;
-use FaktoryWorkerPerl::Worker;
+use FaktoryWorker::Client;
+use FaktoryWorker::Worker;
 
-my $worker = FaktoryWorkerPerl::Worker->new(
-    client => FaktoryWorkerPerl::Client->new,
+my $worker = FaktoryWorker::Worker->new(
+    client => FaktoryWorker::Client->new(
+        host => "localhost",
+        port => 7419,
+    ),
     queues => [ qw< critical default bulk > ]
 );
 

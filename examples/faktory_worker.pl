@@ -8,14 +8,17 @@ use feature qw(say);
 use FindBin;
 use lib "$FindBin::Bin/../lib";
 
-use FaktoryWorkerPerl::Client;
-use FaktoryWorkerPerl::Worker;
+use FaktoryWorker::Client;
+use FaktoryWorker::Worker;
 use Data::Dump qw< pp >;
 
 say "starting worker";
 
-my $worker = FaktoryWorkerPerl::Worker->new(
-    client  => FaktoryWorkerPerl::Client->new,
+my $worker = FaktoryWorker::Worker->new(
+    client => FaktoryWorker::Client->new(
+        host => "localhost",
+        port => 7419,
+    ),
     queues  => [qw< critical default bulk >],
     logging => 1,
 );

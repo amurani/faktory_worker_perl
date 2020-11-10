@@ -59,6 +59,13 @@ $worker->register('test_job', sub {
 $worker->run(my $daemonize = 1 );
 
 ```
+## Features
+- [x] Worker lifecycle (job processing, fail jobs, heartbeat, handle signals from server heartbeat response)
+- [x] Tests
+- [x] Authentication
+- [x] Labels
+- [] Mutate API
+- [] Concurrency
 
 ## Development
 

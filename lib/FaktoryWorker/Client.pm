@@ -101,8 +101,8 @@ has labels => (
 
 =item C<fetch($queues)>
 
-Sends a FETCH to request a job from the Faktory job server in a list of queues
-Defaults to 'default' if no list is provided
+Sends a B<FETCH> command to request a job from the Faktory job server with a list of queues
+Defaults to a list with 'default' only if no list is provided
 
 Returns an instance of C<FaktoryWorker::Job> on success
 
@@ -129,7 +129,7 @@ sub fetch ( $self, $queues = [qw<default>] ) {
 
 =item C<push($job)>
 
-Sends a PUSH of a job to the Faktory worker
+Sends a B<PUSH> command with a job instance of C<FaktoryWorker::Job> to the Faktory worker
 Returns the job id once pushed
 
 Take an instance of C<FaktoryWorker::Job> as an argument
@@ -151,7 +151,7 @@ sub push ( $self, $job ) {
 
 =item C<ack()>
 
-Sends an ACK when a job has been processed successfully
+Sends an B<ACK> command when a job has been processed successfully
 =cut
 
 sub ack ( $self, $job_id ) {
@@ -165,7 +165,7 @@ sub ack ( $self, $job_id ) {
 
 =item C<fail()>
 
-Sends a FAIL when a job has  not been processed successfully
+Sends a B<FAIL> command when a job has  not been processed successfully
 =cut
 
 sub fail ( $self, $job_id, $error_type, $error_message, $backtrace ) {
@@ -184,7 +184,7 @@ sub fail ( $self, $job_id, $error_type, $error_message, $backtrace ) {
 
 =item C<beat()>
 
-Sends a BEAT as required for proof of liveness
+Sends a B<BEAT> command as required for proof of liveness
 
 =cut
 
@@ -226,7 +226,7 @@ sub recv ( $self, $client_socket ) {
 =item C<send($client_socket, $command, $data)>
 
 Sends payload to Faktory job server
-Returns Faktory job server response as an instance of FaktoryWorker::Response
+Returns Faktory job server response as an instance of C<FaktoryWorker::Response>
 
 Take the current TCP socket connection to the Faktory server, a command and an encoded json payload as arguments
 =cut

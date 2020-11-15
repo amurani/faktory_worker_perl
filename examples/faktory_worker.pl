@@ -5,18 +5,22 @@ use warnings;
 
 use feature qw(say);
 
-# use lib '../';
-push @INC, '../';
+use FindBin;
+use lib "$FindBin::Bin/../lib";
 
-use FaktoryWorkerPerl::Client;
-use FaktoryWorkerPerl::Worker;
+use FaktoryWorker::Client;
+use FaktoryWorker::Worker;
 use Data::Dump qw< pp >;
 
 say "starting worker";
 
-my $worker = FaktoryWorkerPerl::Worker->new(
-    client => FaktoryWorkerPerl::Client->new,
-    queues => [qw< critical default bulk >]
+my $worker = FaktoryWorker::Worker->new(
+    client => FaktoryWorker::Client->new(
+        host => "localhost",
+        port => 7419,
+    ),
+    queues  => [qw< critical default bulk >],
+    logging => 1,
 );
 
 $worker->register(
@@ -24,9 +28,9 @@ $worker->register(
     sub {
         my $job = shift;
 
-        say sprintf( "running job: %s", $job->{jid} );
+        say sprintf( "running job: %s", $job->jid );
 
-        my $args = $job->{args};
+        my $args = $job->args;
         my ( $a, $b ) = @$args;
         my $sum = $a + $b;
 

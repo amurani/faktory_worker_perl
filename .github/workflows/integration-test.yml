@@ -1,0 +1,38 @@
+# Borrows references from https://github.com/marketplace/actions/install-with-cpanm
+name: integration-test
+
+# Run this action whenever one pushes to repository or creates a pull request
+on: [push, pull_request]
+
+jobs:
+  test:
+
+    name: "perl v${{ matrix.perl-version }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        perl-version:
+          - "5.30"
+
+    runs-on: ubuntu-latest
+    container:
+      image: perldocker/perl-tester:${{ matrix.perl-version }}
+
+    services:
+      faktory:
+        image: contribsys/faktory:latest
+        ports:
+          - 7419:7419
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install perl dependencies via cpan
+        uses: perl-actions/install-with-cpanm@v1.1
+        with:
+          cpanfile: "cpanfile"
+          sudo: false
+
+      - name: Run tests for library
+        run: ENV=ci make tests

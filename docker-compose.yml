@@ -1,0 +1,9 @@
+version: "3.8"
+services:
+  faktory:
+    image: contribsys/faktory:latest
+    ports:
+      - '127.0.0.1:7419:7419'
+      - '127.0.0.1:7420:7420'
+    environment:
+      - FAKTORY_PASSWORD=06c759852560b59c8d8aae9549d3530c

@@ -28,9 +28,9 @@ $worker->register(
     sub {
         my $job = shift;
 
-        say sprintf( "running job: %s", $job->{jid} );
+        say sprintf( "running job: %s", $job->jid );
 
-        my $args = $job->{args};
+        my $args = $job->args;
         my ( $a, $b ) = @$args;
         my $sum = $a + $b;
 

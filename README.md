@@ -52,9 +52,9 @@ my $worker = FaktoryWorker::Worker->new(
 $worker->register('test_job', sub {
     my $job = shift;
 
-    say sprintf("running job: %s", $job->{jid});
+    say sprintf("running job: %s", $job->jid);
 
-    my $args = $job->{args};
+    my $args = $job->args;
     my $a = $args->[0];
     my $b = $args->[0];
     my $sum = $a + $b;

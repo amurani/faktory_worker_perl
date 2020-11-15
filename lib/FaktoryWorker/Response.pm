@@ -2,9 +2,26 @@ package FaktoryWorker::Response;
 
 =pod
 
-=head1 FaktoryWorker::Response
+=head1 NAME
 
-Response object for a parsed version of Faktory job server response
+C<FaktoryWorker::Response> - utility for parsing Faktory job server responses
+
+=head1 SYNOPSIS
+
+    use FaktoryWorker::Response;
+
+    my $raw_response = "+OK\r\n"; # sample reposponse
+    my $response     = FaktoryWorker::Response->new( raw_response => $raw_response );
+    if ($response->is_okay) {
+        # do okay stuff here
+    }
+
+
+=head1 DESCRIPTION
+
+C<FaktoryWorker::Response> - Response object for a parsed version of Faktory job server response
+
+=head1 METHODS
 
 =cut
 
@@ -43,7 +60,9 @@ has data => (
     required => 0,
 );
 
-=item BUILDARGS hook
+=over
+
+=item C<BUILDARGS> hook
 
 Parses responses from the Faktory job server
 Please see L<Redis protocol format|https://redis.io/topics/protocol> for references on the format
@@ -57,15 +76,21 @@ around BUILDARGS => sub {
     } else {
         my ( $type, $data ) = split /\s+(.*)/, $raw_response;
         $parsed_response = {
-            $type ? ( type => $type )                                                               : (),
-            $data ? ( $data =~ m/^{.*$/ ? ( data => decode_json($data), ) : ( message => $data ), ) : ()
+            $type ? ( type => $type ) : (),
+            $data
+            ? (
+                $data =~ m/^{.*$/
+                ? ( data => decode_json($data), )
+                : ( message => $data ),
+                )
+            : ()
         };
     }
 
     return $class->$orig( raw_response => $raw_response, %$parsed_response );
 };
 
-=item is_handshake()
+=item C<is_handshake()>
 
 Indicates if an initial handshake has been established
 
@@ -73,7 +98,7 @@ Indicates if an initial handshake has been established
 
 sub is_handshake($self) { $self->type eq HI }
 
-=item is_okay()
+=item C<is_okay()>
 
 Indicates if a response from the Faktory job server is OK
 
@@ -81,7 +106,7 @@ Indicates if a response from the Faktory job server is OK
 
 sub is_okay($self) { $self->type eq OK }
 
-=item recv()
+=item C<has_no_jobs()>
 
 Indicates if a fetch call to the Faktory job server returned no jobs
 
@@ -93,3 +118,9 @@ __PACKAGE__->meta->make_immutable;
 1;
 
 =back
+
+=head1 AUTHORS
+
+Kevin Murani - L<https://github.com/amurani>
+
+=cut

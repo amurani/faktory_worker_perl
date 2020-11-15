@@ -2,9 +2,45 @@ package FaktoryWorker::Worker;
 
 =pod
 
-=head1 FaktoryWorker::Worker
+=head1 NAME
 
-Worker that handles fetching jobs from the Faktory job server and processes them
+C<FaktoryWorker::Worker> - processes jobs from the Faktory job server
+
+
+=head1 SYNOPSIS
+
+    use FaktoryWorker::Worker;
+    use FaktoryWorker::Client;
+
+    my $worker = FaktoryWorker::Worker->new(
+        client => FaktoryWorker::Client->new,
+        queues  => [qw< critical default bulk >],
+    );
+
+    $worker->register(
+        'poc_job',
+        sub {
+            my $job = shift;
+
+            say sprintf( "running job: %s", $job->{jid} );
+
+            my $args = $job->{args};
+            my ( $a, $b ) = @$args;
+            my $sum = $a + $b;
+
+            say sprintf( "sum: %d + %d = %d", $a, $b, $sum );
+
+            return $sum;
+        }
+    );
+
+    $worker->run(my $daemonize = 1);
+
+=head1 DESCRIPTION
+
+C<FaktoryWorker::Worker> is the worker that handles fetching jobs from the Faktory job server and processes them
+
+=head1 METHODS
 
 =cut
 
@@ -55,21 +91,27 @@ use constant SLEEP_INTERVAL => 250_000;
 
 =over
 
-=item register()
+=item C<register($job_type, $callable)>
 
 Registers job processors for each job type
+
+Takes a job type name string and a code ref callback for how to process the job
+
+The callback takes a serialized hash of the FaktoryWorker::Job object as the only argument
 
 =cut
 
 sub register ( $self, $job_type, $callable ) {
     unless ($job_type) {
-        warn "An job processor cannot be registered without a job type" unless $job_type;
+        warn "An job processor cannot be registered without a job type"
+            unless $job_type;
         return 0;
     }
 
     unless ($callable) {
-        warn "A job processor cannot be undefined"           unless $callable;
-        warn "A job processor must be a runnable subroutine" unless ref $callable eq 'CODE';
+        warn "A job processor cannot be undefined" unless $callable;
+        warn "A job processor must be a runnable subroutine"
+            unless ref $callable eq 'CODE';
         return 0;
     }
 
@@ -77,10 +119,12 @@ sub register ( $self, $job_type, $callable ) {
     return exists $self->job_types->{$job_type};
 }
 
-=item run()
+=item C<run($daemonize)>
 
 Processes jobs in the faktory job server.
 It can be daemonized to run periodically or just run once
+
+Takes a boolean (1|0) value as an argument to indicate if it is daemonized or not
 
 =cut
 
@@ -120,7 +164,8 @@ sub run ( $self, $daemonize = 0 ) {
             $self->logger->info("no jobs to run at present");
         }
 
-        $self->logger->info("worker has not been asked to stop") unless $self->stop;
+        $self->logger->info("worker has not been asked to stop")
+            unless $self->stop;
 
         usleep( $self->SLEEP_INTERVAL );
     } while ( $daemonize && !$self->stop );
@@ -131,3 +176,9 @@ __PACKAGE__->meta->make_immutable;
 1;
 
 =back
+
+=head1 AUTHORS
+
+Kevin Murani - L<https://github.com/amurani>
+
+=cut

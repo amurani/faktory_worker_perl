@@ -2,9 +2,33 @@ package FaktoryWorker::Client;
 
 =pod
 
-=head1 FaktoryWorker::Client
+=head1 NAME
 
-Client that handles all communication with the Faktory job server and handles job interactions
+C<FaktoryWorker::Client> - handles all communication with the Faktory job server
+
+=head1 SYNOPSIS
+
+    use FaktoryWorker::Client;
+    use FaktoryWorker::Job;
+
+    # send heartbeat to Faktory job server
+    $client->beat();
+
+    # push job to Faktory job server
+    my $job = FaktoryWorker::Job->new(
+        type    => 'poc_job',
+        args    => [ int( rand(10) ), int( rand(10) ) ],
+        logging => 1,
+    );
+    $client->push($job);
+
+=head1 DESCRIPTION
+
+C<FaktoryWorker::Client> represents a client that handles all communication with the Faktory job server and handles job interactions
+
+Please see L<job payload options|https://github.com/contribsys/faktory/wiki/The-Job-Payload#options> and L<job oayload metadata|https://github.com/contribsys/faktory/wiki/The-Job-Payload#options> for more details on attributes.
+
+=head1 METHODS
 
 =cut
 
@@ -75,12 +99,14 @@ has labels => (
 
 =over
 
-=item fetch()
+=item C<fetch($queues)>
 
 Sends a FETCH to request a job from the Faktory job server in a list of queues
 Defaults to 'default' if no list is provided
 
 Returns an instance of FaktoryWorker::Job on success
+
+Takes an array ref of job queues as an argument
 
 =cut
 
@@ -101,10 +127,12 @@ sub fetch ( $self, $queues = [qw<default>] ) {
     return $job;
 }
 
-=item push()
+=item C<push($job)>
 
 Sends a PUSH of a job to the Faktory worker
 Returns the job id once pushed
+
+Take an instance of FaktoryWorker::Job as an argument
 =cut
 
 sub push ( $self, $job ) {
@@ -121,7 +149,7 @@ sub push ( $self, $job ) {
     }
 }
 
-=item ack()
+=item C<ack()>
 
 Sends an ACK when a job has been processed successfully
 =cut
@@ -135,21 +163,26 @@ sub ack ( $self, $job_id ) {
     return $response->is_okay;
 }
 
-=item fail()
+=item C<fail()>
 
 Sends a FAIL when a job has  not been processed successfully
 =cut
 
 sub fail ( $self, $job_id, $error_type, $error_message, $backtrace ) {
     my $client_socket = $self->_connect();
-    my $fail_payload  = { jid => $job_id, errtype => $error_type, message => $error_message, backtrace => $backtrace };
-    my $response      = $self->send( $client_socket, FAIL, encode_json($fail_payload) );
+    my $fail_payload  = {
+        jid       => $job_id,
+        errtype   => $error_type,
+        message   => $error_message,
+        backtrace => $backtrace
+    };
+    my $response = $self->send( $client_socket, FAIL, encode_json($fail_payload) );
     $self->_disconnect($client_socket);
 
     return $response->is_okay;
 }
 
-=item beat()
+=item C<beat()>
 
 Sends a BEAT as required for proof of liveness
 
@@ -168,7 +201,7 @@ sub beat($self) {
     }
 }
 
-=item recv()
+=item C<recv()>
 
 Reads response from Faktory job server
 
@@ -190,11 +223,12 @@ sub recv ( $self, $client_socket ) {
     return $data;
 }
 
-=item send()
+=item C<send($client_socket, $command, $data)>
 
 Sends payload to Faktory job server
 Returns Faktory job server response as an instance of FaktoryWorker::Response
 
+Take the current TCP socket connection to the Faktory server, a command and an encoded json payload as arguments
 =cut
 
 sub send ( $self, $client_socket, $command, $data ) {
@@ -218,7 +252,7 @@ sub send ( $self, $client_socket, $command, $data ) {
     return $response;
 }
 
-=item _connect()
+=item C<_connect()>
 
 Opens TCP network connection to Faktory job server.
 Returns instance of socket connection
@@ -244,7 +278,8 @@ sub _connect($self) {
         my $handshake_payload          = $response->data;
         my $is_authentication_required = exists $handshake_payload->{s} && exists $handshake_payload->{i};
 
-        die sprintf("Handshake: ${\HELLO} requires a password") if $is_authentication_required && !$self->password;
+        die sprintf("Handshake: ${\HELLO} requires a password")
+            if $is_authentication_required && !$self->password;
 
         my $hello_payload = {
             hostname => hostname,
@@ -253,7 +288,11 @@ sub _connect($self) {
             wid      => $self->wid,
             scalar @{ $self->labels } ? ( labels => $self->labels ) : (),
             $is_authentication_required
-            ? ( pwdhash => $self->_generate_password_hash( $handshake_payload->{s}, $handshake_payload->{i} ) )
+            ? ( pwdhash => $self->_generate_password_hash(
+                    $handshake_payload->{s},
+                    $handshake_payload->{i}
+                )
+                )
             : (),
         };
         $response = $self->send( $client_socket, HELLO, encode_json($hello_payload) );
@@ -269,9 +308,11 @@ sub _connect($self) {
     return $client_socket;
 }
 
-=item _disconnect()
+=item C<_disconnect($client_socket)>
 
 Closes TCP network connection to Faktory job server
+
+Take the current TCP socket connection to the Faktory job server object as an argument
 
 =cut
 
@@ -279,9 +320,11 @@ sub _disconnect ( $self, $client_socket ) {
     return $client_socket->close();
 }
 
-=item _generate_password_hash()
+=item C<_generate_password_hash($salt, $iterations)>
 
 Calculates the password hash needed for authentication on the Faktory job server
+
+Takes the salt and iterations values from the Faktory job server initial handshake as arguments
 
 =cut
 
@@ -299,3 +342,9 @@ __PACKAGE__->meta->make_immutable;
 1;
 
 =back
+
+=head1 AUTHORS
+
+Kevin Murani - L<https://github.com/amurani>
+
+=cut

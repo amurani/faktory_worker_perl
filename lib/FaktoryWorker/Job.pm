@@ -2,11 +2,30 @@ package FaktoryWorker::Job;
 
 =pod
 
-=head1 FaktoryWorker::Job
+=head1 NAME
 
-A single unit of work to be pushed to the Faktory job server and processed by the worker
+C<FaktoryWorker::Job> - job to be processed by the Faktory job server
+
+=head1 SYNOPSIS
+
+    use FaktoryWorker::Job;
+    use FaktoryWorker::Client;
+
+    my $client = FaktoryWorker::Client->new;
+    my $job = FaktoryWorker::Job->new(
+        type    => 'poc_job',
+        args    => [ int( rand(10) ), int( rand(10) ) ],
+        logging => 1,
+    );
+    $client->push($job);
+
+=head1 DESCRIPTION
+
+C<FaktoryWorker::Job> represents a single unit of work to be pushed to the Faktory job server and processed by the worker
 
 Please see L<job payload options|https://github.com/contribsys/faktory/wiki/The-Job-Payload#options> and L<job oayload metadata|https://github.com/contribsys/faktory/wiki/The-Job-Payload#options> for more details on attributes.
+
+=head1 METHODS
 
 =cut
 
@@ -99,7 +118,7 @@ has retry => (
 
 =over
 
-=item _build_jid ()
+=item C<_build_jid()>
 
 Generate a unique job id
 
@@ -109,7 +128,7 @@ sub _build_jid($self) {
     return Data::GUID->new->as_string;
 }
 
-=item _build_json_serialization ()
+=item C<_build_json_serialization()>
 
 Generate a json serialization for the job
 
@@ -126,3 +145,9 @@ __PACKAGE__->meta->make_immutable;
 1;
 
 =back
+
+=head1 AUTHORS
+
+Kevin Murani - L<https://github.com/amurani>
+
+=cut

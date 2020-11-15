@@ -104,7 +104,7 @@ has labels => (
 Sends a FETCH to request a job from the Faktory job server in a list of queues
 Defaults to 'default' if no list is provided
 
-Returns an instance of FaktoryWorker::Job on success
+Returns an instance of C<FaktoryWorker::Job> on success
 
 Takes an array ref of job queues as an argument
 
@@ -132,7 +132,7 @@ sub fetch ( $self, $queues = [qw<default>] ) {
 Sends a PUSH of a job to the Faktory worker
 Returns the job id once pushed
 
-Take an instance of FaktoryWorker::Job as an argument
+Take an instance of C<FaktoryWorker::Job> as an argument
 =cut
 
 sub push ( $self, $job ) {

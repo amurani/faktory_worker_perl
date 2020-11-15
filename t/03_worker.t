@@ -33,7 +33,7 @@ describe 'FaktoryWorker::Worker' => sub {
             say "worker is running addition job";
             my $job = shift;
 
-            my $args = $job->{args};
+            my $args = $job->args;
             my ( $a, $b ) = @$args;
             my $sum = $a + $b;
 
@@ -45,7 +45,7 @@ describe 'FaktoryWorker::Worker' => sub {
             say "worker is running substraction job";
             my $job = shift;
 
-            my $args = $job->{args};
+            my $args = $job->args;
             my ( $a, $b ) = @$args;
             my $sum = $a - $b;
 
@@ -84,7 +84,9 @@ describe 'FaktoryWorker::Worker' => sub {
         }
         "An job processor cannot be registered without a job type";
 
-        warnings_are { $no_processor_worker = $worker->register( 'fake_job', undef ) }
+        warnings_are {
+            $no_processor_worker = $worker->register( 'fake_job', undef )
+        }
         [ "A job processor cannot be undefined", "A job processor must be a runnable subroutine" ];
 
         is( $no_name_woker,       0, 'fails to register job worker without name okay' );
@@ -136,9 +138,12 @@ describe 'FaktoryWorker::Worker' => sub {
 
                 last;
             } else {
-                say "worker is still waiting for poc job"          unless $is_do_poc_job_called;
-                say "worker is still waiting for addition job"     unless $is_do_addition_job_called;
-                say "worker is still waiting for substraction job" unless $is_do_substraction_job_called;
+                say "worker is still waiting for poc job"
+                    unless $is_do_poc_job_called;
+                say "worker is still waiting for addition job"
+                    unless $is_do_addition_job_called;
+                say "worker is still waiting for substraction job"
+                    unless $is_do_substraction_job_called;
 
                 $worker->run();
 
@@ -146,7 +151,9 @@ describe 'FaktoryWorker::Worker' => sub {
             }
 
             $are_all_jobs_processed =
-                $is_do_poc_job_called && $is_do_addition_job_called && $is_do_substraction_job_called;
+                   $is_do_poc_job_called
+                && $is_do_addition_job_called
+                && $is_do_substraction_job_called;
         } while ( !$are_all_jobs_processed );
 
     };
@@ -212,8 +219,10 @@ describe 'FaktoryWorker::Worker' => sub {
                             },
                             sprintf( "client serializes %s job to json okay", $job_name )
                         );
-                        $is_job_to_ack_processed  = 1 if $job_name eq 'job_to_ack';
-                        $is_job_to_fail_processed = 1 if $job_name eq 'job_to_fail';
+                        $is_job_to_ack_processed = 1
+                            if $job_name eq 'job_to_ack';
+                        $is_job_to_fail_processed = 1
+                            if $job_name eq 'job_to_fail';
                     }
                 }
 

@@ -97,7 +97,7 @@ Registers job processors for each job type
 
 Takes a job type name string and a code ref callback for how to process the job
 
-The callback takes a serialized hash of the FaktoryWorker::Job object as the only argument
+The callback takes an instance of C<FaktoryWorker::Job> as the only argument
 
 =cut
 
@@ -141,13 +141,13 @@ sub run ( $self, $daemonize = 0 ) {
         next if ( $heartbeat eq 'quiet' );
 
         my $job = $self->client->fetch( $self->queues );
-        if ( $job && keys %$job ) {
+        if ($job) {
             eval {
                 my $callable = $self->job_types->{ $job->{jobtype} }
                     or die sprintf( "No worker for job type: %s has been registered", $job->{jobtype} );
 
                 $callable->($job);
-                $self->client->ack( $job->{jid} );
+                $self->client->ack( $job->jid );
             } or do {
                 my $error = $@;
                 $self->logger->info( sprintf( "An error occured: %s for job: %s", $error, pp $job) );
@@ -158,7 +158,7 @@ sub run ( $self, $daemonize = 0 ) {
                     my ( $package, $filename, $line, $subroutine ) = @caller_details;
                     push @backtrace, sprintf( "%s:%s in %s at %s", $package, $subroutine, $filename, $line );
                 }
-                $self->client->fail( $job->{jid}, "Exception", $error, [ reverse @backtrace ] );
+                $self->client->fail( $job->jid, "Exception", $error, [ reverse @backtrace ] );
             };
         } else {
             $self->logger->info("no jobs to run at present");
